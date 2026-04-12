@@ -5,6 +5,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>リンのコーデアプリ</title>
+<!-- Supabase JS Client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 /* ===== CSS変数・リセット ===== */
 :root {
@@ -23,12 +25,12 @@
   --radius: 16px;
   --nav-h: 64px;
   --header-h: 52px;
+  --success: #4CAF50;
 }
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 body {
   font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg); color: var(--text);
   min-height: 100dvh;
   padding-bottom: calc(var(--nav-h) + 16px);
   padding-top: var(--header-h);
@@ -47,20 +49,30 @@ color: #fff; font-size: 18px; font-weight: 700;
 letter-spacing: 1px;
 box-shadow: 0 2px 8px rgba(255,143,171,0.3);
 }
-.app-header .header-icon { font-size: 22px; margin-right: 6px; }
-.header-right {
-position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+.header-left {
+position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+display: flex; gap: 4px;
 }
-.header-right button {
+.header-left button, .header-right button {
 background: rgba(255,255,255,0.25); color: #fff;
 border-radius: 8px; padding: 6px 10px; font-size: 12px;
 }
+.header-right {
+position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+display: flex; gap: 4px;
+}
+.sync-indicator {
+font-size: 10px; display: flex; align-items: center; gap: 2px;
+padding: 3px 6px; border-radius: 6px;
+background: rgba(255,255,255,0.2); color: #fff;
+}
+.sync-indicator.online { background: rgba(76,175,80,0.5); }
+.sync-indicator.offline { background: rgba(255,107,107,0.5); }
 
 /* ===== 下部ナビ ===== */
 .bottom-nav {
 position: fixed; bottom:0; left:0; right:0; z-index:100;
-height: var(–nav-h);
-background: var(–card);
+height: var(–nav-h); background: var(–card);
 border-top: 1px solid var(–border);
 display: flex; align-items: center; justify-content: space-around;
 box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
@@ -93,191 +105,128 @@ display: flex; align-items: center; gap: 6px;
 display: inline-flex; align-items: center; justify-content: center; gap: 6px;
 padding: 14px 20px; border-radius: 12px;
 font-size: 16px; font-weight: 600;
-transition: transform .1s, box-shadow .2s;
+transition: transform .1s, box-shadow .2s, opacity .2s;
 min-height: 48px;
 }
 .btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.5; pointer-events: none; }
 .btn-primary {
 background: linear-gradient(135deg, var(–primary), #FFB3C6);
-color: #fff; box-shadow: 0 4px 12px rgba(255,143,171,0.3);
-width: 100%;
+color: #fff; box-shadow: 0 4px 12px rgba(255,143,171,0.3); width: 100%;
 }
-.btn-secondary {
-background: var(–secondary); color: var(–text);
-box-shadow: 0 2px 8px rgba(168,216,234,0.3);
-}
-.btn-accent {
-background: var(–accent); color: var(–text);
-box-shadow: 0 2px 8px rgba(255,209,102,0.3);
-}
-.btn-danger {
-background: var(–danger); color: #fff;
-box-shadow: 0 2px 8px rgba(255,107,107,0.3);
-}
-.btn-outline {
-background: transparent; border: 2px solid var(–primary);
-color: var(–primary);
-}
+.btn-secondary { background: var(–secondary); color: var(–text); }
+.btn-accent { background: var(–accent); color: var(–text); }
+.btn-danger { background: var(–danger); color: #fff; }
+.btn-success { background: var(–success); color: #fff; }
+.btn-outline { background: transparent; border: 2px solid var(–primary); color: var(–primary); }
 .btn-sm { padding: 8px 14px; font-size: 13px; min-height: 36px; border-radius: 10px; }
 .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ===== フォーム ===== */
 .form-group { margin-bottom: 14px; }
-.form-label {
-display: block; font-size: 13px; font-weight: 600;
-margin-bottom: 4px; color: var(–text);
-}
-.form-label .required {
-color: var(–danger); font-size: 11px; margin-left: 4px;
-}
+.form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.form-label .required { color: var(–danger); font-size: 11px; margin-left: 4px; }
 .form-input, .form-select {
 width: 100%; padding: 12px 14px; border: 2px solid var(–border);
-border-radius: 12px; background: #FEFCFA; font-size: 16px;
-transition: border-color .2s;
+border-radius: 12px; background: #FEFCFA; font-size: 16px; transition: border-color .2s;
 }
-.form-input:focus, .form-select:focus {
-outline: none; border-color: var(–primary);
-}
+.form-input:focus, .form-select:focus { outline: none; border-color: var(–primary); }
 .form-error { color: var(–danger); font-size: 12px; margin-top: 4px; display: none; }
 .form-error.show { display: block; }
 
 /* ===== チップ・タグ ===== */
 .chip {
 display: inline-flex; align-items: center; gap: 4px;
-padding: 6px 12px; border-radius: 20px;
-font-size: 13px; font-weight: 500; cursor: pointer;
-border: 2px solid var(–border); background: var(–card);
-transition: all .2s;
+padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 500;
+cursor: pointer; border: 2px solid var(–border); background: var(–card); transition: all .2s;
 }
 .chip.active { border-color: var(–primary); background: #FFF0F3; color: var(–primary-dark); }
 .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
-.tag {
-display: inline-block; padding: 2px 8px; border-radius: 8px;
-font-size: 11px; font-weight: 600;
-}
-.tag-wash { background: #E3F2FD; color: #1976D2; }
-.tag-fav { background: #FFF3E0; color: #E65100; }
 
-/* ===== 写真 ===== */
-.photo-placeholder {
-width: 100%; aspect-ratio: 1; border-radius: 12px;
-background: linear-gradient(135deg, #F5E6FF, #E3F2FD);
+/* ===== 写真アップロード（修正版） ===== */
+.photo-upload-area { margin-bottom: 14px; }
+.photo-preview {
+width: 100%; aspect-ratio: 4/3; border-radius: 14px;
+border: 3px dashed var(–border); overflow: hidden;
+background: #FEFCFA; position: relative;
 display: flex; flex-direction: column; align-items: center; justify-content: center;
-color: var(–text-light); font-size: 14px; gap: 4px;
-overflow: hidden;
+gap: 6px; color: var(–text-light); font-size: 14px;
 }
-.photo-placeholder img {
-width: 100%; height: 100%; object-fit: cover; border-radius: 12px;
+.photo-preview.has-photo { border-style: solid; border-color: var(–accent2); }
+.photo-preview img {
+position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
 }
-.photo-placeholder .placeholder-icon { font-size: 36px; }
+.photo-preview .placeholder-icon { font-size: 36px; }
+.photo-buttons {
+display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+}
+.photo-buttons .btn { font-size: 14px; padding: 10px 8px; }
+.photo-extra-buttons {
+display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+}
+.photo-extra-buttons.show { display: grid; }
+.hidden-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
 
 /* ===== ホーム画面 ===== */
 .greeting { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
 .greeting-sub { font-size: 13px; color: var(–text-light); margin-bottom: 16px; }
-.weather-grid {
-display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;
-}
-.temp-display {
-text-align: center; padding: 10px; background: #FFF5F5; border-radius: 12px;
-}
-.temp-display .temp-val { font-size: 28px; font-weight: 700; color: var(–primary-dark); }
-.temp-display .temp-label { font-size: 11px; color: var(–text-light); }
+.weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
 .condition-checks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .condition-check {
 display: flex; align-items: center; gap: 6px;
-padding: 8px 12px; border-radius: 10px;
-font-size: 13px; cursor: pointer;
-border: 2px solid var(–border); background: var(–card);
-transition: all .2s;
+padding: 8px 12px; border-radius: 10px; font-size: 13px; cursor: pointer;
+border: 2px solid var(–border); background: var(–card); transition: all .2s;
 }
 .condition-check.active { border-color: var(–danger); background: #FFF0F0; }
 .condition-check input { display: none; }
-.stats-row {
-display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-margin-bottom: 12px;
-}
-.stat-card {
-text-align: center; padding: 10px 6px;
-background: var(–card); border-radius: 12px;
-box-shadow: var(–shadow);
-}
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.stat-card { text-align: center; padding: 10px 6px; background: var(–card); border-radius: 12px; box-shadow: var(–shadow); }
 .stat-val { font-size: 22px; font-weight: 700; color: var(–primary); }
 .stat-label { font-size: 10px; color: var(–text-light); margin-top: 2px; }
 
 /* ===== 提案画面 ===== */
-.proposal-card {
-background: var(–card); border-radius: var(–radius);
-box-shadow: var(–shadow); margin-bottom: 16px; overflow: hidden;
-}
-.proposal-header {
-padding: 10px 16px; font-weight: 700; font-size: 15px;
-display: flex; align-items: center; gap: 6px;
-}
+.proposal-card { background: var(–card); border-radius: var(–radius); box-shadow: var(–shadow); margin-bottom: 16px; overflow: hidden; }
+.proposal-header { padding: 10px 16px; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
 .proposal-header.p1 { background: linear-gradient(135deg, #FFE0E6, #FFF0F3); }
 .proposal-header.p2 { background: linear-gradient(135deg, #E0F0FF, #F0F8FF); }
 .proposal-header.p3 { background: linear-gradient(135deg, #E8FFE8, #F0FFF0); }
-.proposal-items {
-display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-padding: 12px;
-}
+.proposal-items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; }
 .proposal-item { text-align: center; }
 .proposal-item .item-cat { font-size: 11px; color: var(–text-light); margin-bottom: 4px; }
 .proposal-item .item-photo {
-width: 100%; aspect-ratio: 1; border-radius: 10px;
-overflow: hidden; background: linear-gradient(135deg, #F5E6FF, #E3F2FD);
-margin-bottom: 4px;
+width: 100%; aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+background: linear-gradient(135deg, #F5E6FF, #E3F2FD); margin-bottom: 4px;
 }
-.proposal-item .item-photo img {
-width: 100%; height: 100%; object-fit: cover;
-}
+.proposal-item .item-photo img { width: 100%; height: 100%; object-fit: cover; }
 .proposal-item .item-name { font-size: 11px; font-weight: 600; line-height: 1.2; }
-.proposal-reason {
-padding: 8px 16px 6px; font-size: 12px; color: var(–text-light);
-border-top: 1px solid var(–border); line-height: 1.4;
-}
+.proposal-reason { padding: 8px 16px 6px; font-size: 12px; color: var(–text-light); border-top: 1px solid var(–border); line-height: 1.4; }
 .proposal-actions { padding: 8px 16px 14px; }
-.no-proposal {
-text-align: center; padding: 32px 16px; color: var(–text-light);
-}
+.no-proposal { text-align: center; padding: 32px 16px; color: var(–text-light); }
 .no-proposal .no-icon { font-size: 48px; margin-bottom: 8px; }
 
 /* ===== 服一覧 ===== */
-.filter-bar {
-display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px;
--webkit-overflow-scrolling: touch; margin-bottom: 10px;
-}
+.filter-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; margin-bottom: 10px; }
 .filter-bar::-webkit-scrollbar { display: none; }
-.clothes-grid {
-display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-}
+.clothes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .clothes-card {
-background: var(–card); border-radius: var(–radius);
-box-shadow: var(–shadow); overflow: hidden;
-cursor: pointer; transition: transform .15s;
-position: relative;
+background: var(–card); border-radius: var(–radius); box-shadow: var(–shadow);
+overflow: hidden; cursor: pointer; transition: transform .15s; position: relative;
 }
 .clothes-card:active { transform: scale(0.97); }
 .clothes-card .card-photo {
 width: 100%; aspect-ratio: 1; overflow: hidden;
 background: linear-gradient(135deg, #F5E6FF, #E3F2FD);
-display: flex; align-items: center; justify-content: center;
-position: relative;
+display: flex; align-items: center; justify-content: center; position: relative;
 }
-.clothes-card .card-photo img {
-width: 100%; height: 100%; object-fit: cover;
-}
-.clothes-card .card-badges {
-position: absolute; top: 6px; right: 6px;
-display: flex; flex-direction: column; gap: 4px;
-}
+.clothes-card .card-photo img { width: 100%; height: 100%; object-fit: cover; }
+.clothes-card .card-badges { position: absolute; top: 6px; right: 6px; display: flex; flex-direction: column; gap: 4px; }
 .clothes-card .card-info { padding: 8px 10px; }
 .clothes-card .card-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
 .clothes-card .card-meta { font-size: 10px; color: var(–text-light); }
 .badge {
 display: inline-flex; align-items: center; justify-content: center;
-width: 28px; height: 28px; border-radius: 50%;
-font-size: 14px; background: rgba(255,255,255,0.9);
-box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+width: 28px; height: 28px; border-radius: 50%; font-size: 14px;
+background: rgba(255,255,255,0.9); box-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
 /* ===== 服詳細モーダル ===== */
@@ -289,78 +238,51 @@ background: rgba(0,0,0,0.5); align-items: flex-end; justify-content: center;
 .modal-content {
 background: var(–card); width: 100%; max-width: 480px;
 border-radius: 20px 20px 0 0; padding: 20px 16px 32px;
-max-height: 90dvh; overflow-y: auto;
-animation: slideUp .25s ease-out;
+max-height: 90dvh; overflow-y: auto; animation: slideUp .25s ease-out;
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.modal-handle {
-width: 40px; height: 4px; border-radius: 2px;
-background: var(–border); margin: 0 auto 16px;
-}
+.modal-handle { width: 40px; height: 4px; border-radius: 2px; background: var(–border); margin: 0 auto 16px; }
 .modal-photo {
-width: 100%; max-height: 280px; border-radius: 14px;
-overflow: hidden; margin-bottom: 14px;
-background: linear-gradient(135deg, #F5E6FF, #E3F2FD);
-display: flex; align-items: center; justify-content: center;
+width: 100%; max-height: 280px; border-radius: 14px; overflow: hidden; margin-bottom: 14px;
+background: linear-gradient(135deg, #F5E6FF, #E3F2FD); display: flex; align-items: center; justify-content: center;
 }
 .modal-photo img { width: 100%; height: 100%; object-fit: cover; }
 .modal-name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-.modal-details {
-display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;
-}
+.modal-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
 .detail-item { font-size: 13px; }
 .detail-label { color: var(–text-light); font-size: 11px; }
 .modal-actions { display: flex; flex-direction: column; gap: 8px; }
 
-/* ===== 登録フォーム ===== */
-.photo-upload {
-width: 100%; aspect-ratio: 4/3; border-radius: 14px;
-border: 3px dashed var(–border); cursor: pointer;
-display: flex; flex-direction: column; align-items: center; justify-content: center;
-gap: 6px; color: var(–text-light); font-size: 14px;
-transition: border-color .2s; overflow: hidden;
-background: #FEFCFA; position: relative;
-}
-.photo-upload:hover { border-color: var(–primary); }
-.photo-upload img {
-position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-}
-.photo-upload .upload-icon { font-size: 36px; }
-.photo-upload input { display: none; }
-.color-options { display: flex; flex-wrap: wrap; gap: 6px; }
-.color-opt {
-width: 36px; height: 36px; border-radius: 50%;
-border: 3px solid transparent; cursor: pointer;
-transition: border-color .2s, transform .1s;
-}
-.color-opt.active { border-color: var(–primary); transform: scale(1.15); }
-.color-opt:active { transform: scale(0.9); }
-
 /* ===== 着用履歴 ===== */
-.history-date {
-font-size: 14px; font-weight: 700; margin: 12px 0 6px;
-display: flex; align-items: center; gap: 6px;
-}
-.history-card {
-background: var(–card); border-radius: var(–radius);
-box-shadow: var(–shadow); padding: 10px; margin-bottom: 8px;
-}
-.history-items {
-display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-}
+.history-date { font-size: 14px; font-weight: 700; margin: 12px 0 6px; display: flex; align-items: center; gap: 6px; }
+.history-card { background: var(–card); border-radius: var(–radius); box-shadow: var(–shadow); padding: 10px; margin-bottom: 8px; }
+.history-items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .history-item { text-align: center; }
-.history-item .h-photo {
-width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden;
-background: linear-gradient(135deg, #F5E6FF, #E3F2FD);
-margin-bottom: 4px;
-}
+.history-item .h-photo { width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: linear-gradient(135deg, #F5E6FF, #E3F2FD); margin-bottom: 4px; }
 .history-item .h-photo img { width: 100%; height: 100%; object-fit: cover; }
 .history-item .h-name { font-size: 11px; }
-.consecutive-warn {
-background: #FFF3E0; color: #E65100; padding: 6px 10px;
-border-radius: 8px; font-size: 12px; margin-top: 6px;
-display: flex; align-items: center; gap: 4px;
+.consecutive-warn { background: #FFF3E0; color: #E65100; padding: 6px 10px; border-radius: 8px; font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+
+/* ===== 設定画面 ===== */
+.settings-note { font-size: 12px; color: var(–text-light); line-height: 1.5; margin-bottom: 8px; padding: 8px; background: #FFF5E5; border-radius: 8px; }
+.settings-status {
+display: flex; align-items: center; gap: 6px; padding: 10px;
+border-radius: 10px; font-size: 13px; margin-bottom: 8px;
 }
+.settings-status.connected { background: #E8F5E9; color: #2E7D32; }
+.settings-status.disconnected { background: #FFF3E0; color: #E65100; }
+
+/* ===== 保存状態インジケーター ===== */
+.save-status {
+display: none; align-items: center; gap: 8px;
+padding: 12px 16px; border-radius: 12px; margin-bottom: 12px;
+font-size: 14px; font-weight: 500;
+}
+.save-status.saving { display: flex; background: #E3F2FD; color: #1565C0; }
+.save-status.success { display: flex; background: #E8F5E9; color: #2E7D32; }
+.save-status.error { display: flex; background: #FFEBEE; color: #C62828; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .6s linear infinite; }
 
 /* ===== トースト ===== */
 .toast {
@@ -369,136 +291,100 @@ left: 50%; transform: translateX(-50%) translateY(100px);
 background: var(–text); color: #fff;
 padding: 12px 24px; border-radius: 12px;
 font-size: 14px; font-weight: 500; z-index: 300;
-opacity: 0; transition: all .3s;
-box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-white-space: nowrap;
+opacity: 0; transition: all .3s; box-shadow: 0 4px 20px rgba(0,0,0,0.2); white-space: nowrap;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ===== 確認ダイアログ ===== */
 .confirm-overlay {
 display: none; position: fixed; inset: 0; z-index: 250;
-background: rgba(0,0,0,0.5); align-items: center; justify-content: center;
-padding: 24px;
+background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 24px;
 }
 .confirm-overlay.show { display: flex; }
-.confirm-box {
-background: var(–card); border-radius: var(–radius);
-padding: 24px; max-width: 320px; width: 100%; text-align: center;
-}
-.confirm-msg { font-size: 15px; margin-bottom: 18px; line-height: 1.5; }
+.confirm-box { background: var(–card); border-radius: var(–radius); padding: 24px; max-width: 320px; width: 100%; text-align: center; }
+.confirm-msg { font-size: 15px; margin-bottom: 18px; line-height: 1.5; white-space: pre-line; }
 .confirm-btns { display: flex; gap: 10px; }
 .confirm-btns .btn { flex: 1; }
 
-/* ===== ユーティリティ ===== */
-.mb-8 { margin-bottom: 8px; }
-.mb-12 { margin-bottom: 12px; }
-.mt-12 { margin-top: 12px; }
-.text-center { text-align: center; }
-.flex-center { display: flex; align-items: center; justify-content: center; }
-.gap-8 { gap: 8px; }
+/* ===== 色選択 ===== */
+.color-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.color-opt {
+width: 36px; height: 36px; border-radius: 50%;
+border: 3px solid transparent; cursor: pointer; transition: border-color .2s, transform .1s;
+}
+.color-opt.active { border-color: var(–primary); transform: scale(1.15); }
 
 /* ===== 切り替えスイッチ ===== */
-.toggle-wrap {
-display: flex; align-items: center; gap: 10px; padding: 8px 0;
-}
+.toggle-wrap { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
 .toggle {
-width: 50px; height: 28px; border-radius: 14px;
-background: #DDD; position: relative; cursor: pointer;
-transition: background .2s;
+width: 50px; height: 28px; border-radius: 14px; background: #DDD;
+position: relative; cursor: pointer; transition: background .2s;
 }
 .toggle.on { background: var(–primary); }
 .toggle .toggle-knob {
-width: 24px; height: 24px; border-radius: 50%;
-background: #fff; position: absolute; top: 2px; left: 2px;
-transition: left .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+width: 24px; height: 24px; border-radius: 50%; background: #fff;
+position: absolute; top: 2px; left: 2px; transition: left .2s;
+box-shadow: 0 1px 4px rgba(0,0,0,0.2);
 }
 .toggle.on .toggle-knob { left: 24px; }
 .toggle-label { font-size: 14px; }
+
+/* ===== ユーティリティ ===== */
+.mb-8 { margin-bottom: 8px; }
+.mt-12 { margin-top: 12px; }
+.text-center { text-align: center; }
 </style>
 
 </head>
 <body>
 
-<!-- ===== ヘッダー ===== -->
+<!-- ヘッダー -->
 
 <header class="app-header">
-  <span class="header-icon">👗</span> リンのコーデ
+  <div class="header-left">
+    <span class="sync-indicator" id="sync-indicator">
+      <span id="sync-icon">💾</span><span id="sync-text">ローカル</span>
+    </span>
+  </div>
+  <span>👗 リンのコーデ</span>
   <div class="header-right">
-    <button onclick="showSampleDialog()">サンプル投入</button>
+    <button onclick="showSampleDialog()">サンプル</button>
+    <button onclick="switchScreen('settings')">⚙</button>
   </div>
 </header>
 
-<!-- ===== 画面: ホーム ===== -->
+<!-- 画面: ホーム -->
 
 <div id="screen-home" class="screen active">
   <p class="greeting" id="greeting-text">おはよう、リン！</p>
   <p class="greeting-sub" id="greeting-sub">きょうはなにをきようかな？</p>
-
-  <!-- 統計 -->
-
   <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-val" id="stat-total">0</div>
-      <div class="stat-label">ぜんぶのふく</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val" id="stat-available">0</div>
-      <div class="stat-label">きられるふく</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-val" id="stat-history">0</div>
-      <div class="stat-label">きたかいすう</div>
-    </div>
+    <div class="stat-card"><div class="stat-val" id="stat-total">0</div><div class="stat-label">ぜんぶのふく</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-available">0</div><div class="stat-label">きられるふく</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-history">0</div><div class="stat-label">きたかいすう</div></div>
   </div>
-
-  <!-- 天気・気温入力 -->
-
   <div class="card">
     <div class="card-title">🌤 きょうのてんき</div>
     <div class="weather-grid">
-      <div>
-        <div class="form-label">きおん（℃）</div>
-        <input type="number" class="form-input" id="input-temp" value="20" min="-10" max="45" step="1">
-      </div>
-      <div>
-        <div class="form-label">てんき</div>
+      <div><div class="form-label">きおん（℃）</div><input type="number" class="form-input" id="input-temp" value="20" min="-10" max="45" step="1"></div>
+      <div><div class="form-label">てんき</div>
         <select class="form-select" id="input-weather">
-          <option value="sunny">☀ はれ</option>
-          <option value="cloudy">☁ くもり</option>
-          <option value="rainy">🌧 あめ</option>
-          <option value="snowy">❄ ゆき</option>
+          <option value="sunny">☀ はれ</option><option value="cloudy">☁ くもり</option>
+          <option value="rainy">🌧 あめ</option><option value="snowy">❄ ゆき</option>
         </select>
       </div>
     </div>
     <div class="form-label">じょうけん</div>
     <div class="condition-checks">
-      <label class="condition-check" id="check-white-ng">
-        <input type="checkbox" onchange="this.parentElement.classList.toggle('active', this.checked)">
-        🚫 しろNG（しゅうじ・ずこう など）
-      </label>
-      <label class="condition-check" id="check-outdoor">
-        <input type="checkbox" onchange="this.parentElement.classList.toggle('active', this.checked)">
-        🏃 そとあそび
-      </label>
+      <label class="condition-check" id="check-white-ng"><input type="checkbox" onchange="this.parentElement.classList.toggle('active',this.checked)">🚫 しろNG</label>
+      <label class="condition-check" id="check-outdoor"><input type="checkbox" onchange="this.parentElement.classList.toggle('active',this.checked)">🏃 そとあそび</label>
     </div>
   </div>
-
-  <!-- 提案ボタン -->
-
-  <button class="btn btn-primary" onclick="generateProposals()" style="margin-bottom:12px;">
-    ✨ コーデをかんがえる！
-  </button>
-
-  <!-- 最近の着用 -->
-
-  <div class="card">
-    <div class="card-title">📅 さいきんきたふく</div>
-    <div id="recent-history"></div>
-  </div>
+  <button class="btn btn-primary" onclick="generateProposals()" style="margin-bottom:12px;">✨ コーデをかんがえる！</button>
+  <div class="card"><div class="card-title">📅 さいきんきたふく</div><div id="recent-history"></div></div>
 </div>
 
-<!-- ===== 画面: コーデ提案 ===== -->
+<!-- 画面: コーデ提案 -->
 
 <div id="screen-propose" class="screen">
   <h2 style="font-size:18px; margin-bottom:4px;">✨ コーデていあん</h2>
@@ -506,147 +392,169 @@ transition: left .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   <div id="proposals-container"></div>
 </div>
 
-<!-- ===== 画面: 服一覧 ===== -->
+<!-- 画面: 服一覧 -->
 
 <div id="screen-list" class="screen">
   <h2 style="font-size:18px; margin-bottom:10px;">👚 おようふくリスト</h2>
   <div class="filter-bar" id="filter-bar">
-    <button class="chip active" data-filter="all" onclick="filterClothes('all', this)">すべて</button>
-    <button class="chip" data-filter="tops" onclick="filterClothes('tops', this)">トップス</button>
-    <button class="chip" data-filter="bottoms" onclick="filterClothes('bottoms', this)">ボトムス</button>
-    <button class="chip" data-filter="outer" onclick="filterClothes('outer', this)">アウター</button>
-    <button class="chip" data-filter="washing" onclick="filterClothes('washing', this)">🫧 せんたく中</button>
-    <button class="chip" data-filter="fav" onclick="filterClothes('fav', this)">⭐ おきにいり</button>
+    <button class="chip active" data-filter="all" onclick="filterClothes('all',this)">すべて</button>
+    <button class="chip" data-filter="tops" onclick="filterClothes('tops',this)">トップス</button>
+    <button class="chip" data-filter="bottoms" onclick="filterClothes('bottoms',this)">ボトムス</button>
+    <button class="chip" data-filter="outer" onclick="filterClothes('outer',this)">アウター</button>
+    <button class="chip" data-filter="washing" onclick="filterClothes('washing',this)">🫧 せんたく中</button>
+    <button class="chip" data-filter="fav" onclick="filterClothes('fav',this)">⭐ おきにいり</button>
   </div>
   <div class="clothes-grid" id="clothes-grid"></div>
-  <div class="text-center mt-12">
-    <button class="btn btn-outline" onclick="switchScreen('register')">＋ ふくをとうろく</button>
-  </div>
+  <div class="text-center mt-12"><button class="btn btn-outline" onclick="startNewRegistration()">＋ ふくをとうろく</button></div>
 </div>
 
-<!-- ===== 画面: 服登録 ===== -->
+<!-- 画面: 服登録（修正版） -->
 
 <div id="screen-register" class="screen">
   <h2 style="font-size:18px; margin-bottom:10px;" id="register-title">👕 ふくをとうろく</h2>
-  <input type="hidden" id="edit-id" value="">
-
+  <div class="save-status" id="save-status"><span id="save-status-icon"></span><span id="save-status-text"></span></div>
   <div class="card">
-    <!-- 写真 -->
-    <div class="form-group">
+    <div class="photo-upload-area">
       <div class="form-label">しゃしん</div>
-      <div class="photo-upload" id="photo-upload" onclick="document.getElementById('photo-input').click()">
-        <span class="upload-icon">📸</span>
-        <span>タップしてしゃしんをえらぶ</span>
-        <input type="file" id="photo-input" accept="image/*" onchange="handlePhotoSelect(event)">
+      <div class="photo-preview" id="photo-preview">
+        <span class="placeholder-icon">📸</span>
+        <span>したのボタンからしゃしんをえらんでね</span>
+      </div>
+      <input type="file" accept="image/*" capture="environment" id="photo-input-camera" class="hidden-input" onchange="handlePhotoSelect(event)">
+      <input type="file" accept="image/*" id="photo-input-gallery" class="hidden-input" onchange="handlePhotoSelect(event)">
+      <div class="photo-buttons">
+        <button class="btn btn-sm btn-secondary" type="button" onclick="document.getElementById('photo-input-camera').click()">📷 カメラ</button>
+        <button class="btn btn-sm btn-accent" type="button" onclick="document.getElementById('photo-input-gallery').click()">🖼 アルバム</button>
+      </div>
+      <div class="photo-extra-buttons" id="photo-extra-buttons">
+        <button class="btn btn-sm btn-success" type="button" onclick="downloadCurrentPhoto()">📥 たんまつにほぞん</button>
+        <button class="btn btn-sm btn-outline" type="button" onclick="clearPhoto()">✕ しゃしんをけす</button>
       </div>
     </div>
-
-```
-<!-- 名前 -->
-<div class="form-group">
-  <label class="form-label">なまえ<span class="required">*ひっす</span></label>
-  <input type="text" class="form-input" id="reg-name" placeholder="たとえば：ピンクのTシャツ" maxlength="30">
-  <div class="form-error" id="err-name">なまえをいれてね</div>
-</div>
-
-<!-- カテゴリ -->
-<div class="form-group">
-  <label class="form-label">カテゴリ<span class="required">*ひっす</span></label>
-  <select class="form-select" id="reg-category">
-    <option value="">えらんでね</option>
-    <option value="tops">トップス</option>
-    <option value="bottoms">ボトムス</option>
-    <option value="outer">アウター</option>
-  </select>
-  <div class="form-error" id="err-category">カテゴリをえらんでね</div>
-</div>
-
-<!-- 色 -->
-<div class="form-group">
-  <label class="form-label">いろ<span class="required">*ひっす</span></label>
-  <div class="color-options" id="color-options">
-    <!-- JS生成 -->
+    <div class="form-group">
+      <label class="form-label">なまえ<span class="required">*ひっす</span></label>
+      <input type="text" class="form-input" id="reg-name" placeholder="たとえば：ピンクのTシャツ" maxlength="30">
+      <div class="form-error" id="err-name">なまえをいれてね</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">カテゴリ<span class="required">*ひっす</span></label>
+      <select class="form-select" id="reg-category">
+        <option value="">えらんでね</option>
+        <option value="tops">トップス</option><option value="bottoms">ボトムス</option><option value="outer">アウター</option>
+      </select>
+      <div class="form-error" id="err-category">カテゴリをえらんでね</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">いろ<span class="required">*ひっす</span></label>
+      <div class="color-options" id="color-options"></div>
+      <div class="form-error" id="err-color">いろをえらんでね</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">きせつ</label>
+      <div class="chip-group" id="season-chips">
+        <button type="button" class="chip active" data-season="all" onclick="selectSeason(this)">オールシーズン</button>
+        <button type="button" class="chip" data-season="spring" onclick="selectSeason(this)">🌸 はる</button>
+        <button type="button" class="chip" data-season="summer" onclick="selectSeason(this)">🌻 なつ</button>
+        <button type="button" class="chip" data-season="autumn" onclick="selectSeason(this)">🍁 あき</button>
+        <button type="button" class="chip" data-season="winter" onclick="selectSeason(this)">⛄ ふゆ</button>
+      </div>
+    </div>
+    <div class="toggle-wrap">
+      <div class="toggle" id="reg-washing" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+      <span class="toggle-label">🫧 せんたく中</span>
+    </div>
+    <div class="toggle-wrap">
+      <div class="toggle" id="reg-fav" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+      <span class="toggle-label">⭐ おきにいり</span>
+    </div>
   </div>
-  <input type="hidden" id="reg-color" value="">
-  <div class="form-error" id="err-color">いろをえらんでね</div>
+  <button class="btn btn-primary" id="save-btn" onclick="saveClothing()">💾 ほぞんする</button>
 </div>
 
-<!-- 季節 -->
-<div class="form-group">
-  <label class="form-label">きせつ</label>
-  <div class="chip-group" id="season-chips">
-    <button class="chip active" data-season="all" onclick="selectSeason('all', this)">オールシーズン</button>
-    <button class="chip" data-season="spring" onclick="selectSeason('spring', this)">🌸 はる</button>
-    <button class="chip" data-season="summer" onclick="selectSeason('summer', this)">🌻 なつ</button>
-    <button class="chip" data-season="autumn" onclick="selectSeason('autumn', this)">🍁 あき</button>
-    <button class="chip" data-season="winter" onclick="selectSeason('winter', this)">⛄ ふゆ</button>
-  </div>
-</div>
-
-<!-- 洗濯中 -->
-<div class="toggle-wrap">
-  <div class="toggle" id="reg-washing" onclick="this.classList.toggle('on')">
-    <div class="toggle-knob"></div>
-  </div>
-  <span class="toggle-label">🫧 せんたく中</span>
-</div>
-
-<!-- お気に入り -->
-<div class="toggle-wrap">
-  <div class="toggle" id="reg-fav" onclick="this.classList.toggle('on')">
-    <div class="toggle-knob"></div>
-  </div>
-  <span class="toggle-label">⭐ おきにいり</span>
-</div>
-```
-
-  </div>
-
-<button class="btn btn-primary" onclick="saveClothing()">💾 ほぞんする</button>
-
-</div>
-
-<!-- ===== 画面: 着用履歴 ===== -->
+<!-- 画面: 着用履歴 -->
 
 <div id="screen-history" class="screen">
   <h2 style="font-size:18px; margin-bottom:10px;">📖 きたふくのきろく</h2>
   <div id="history-container"></div>
-  <div id="history-empty" class="no-proposal" style="display:none;">
-    <div class="no-icon">📖</div>
-    <p>まだきろくがないよ</p>
+  <div id="history-empty" class="no-proposal" style="display:none;"><div class="no-icon">📖</div><p>まだきろくがないよ</p></div>
+</div>
+
+<!-- 画面: 設定 -->
+
+<div id="screen-settings" class="screen">
+  <h2 style="font-size:18px; margin-bottom:14px;">⚙ せってい</h2>
+  <div class="card">
+    <div class="card-title">☁ クラウドどうき（Supabase）</div>
+    <div class="settings-status" id="supabase-status"><span id="supabase-status-text">みせっていです</span></div>
+    <div class="settings-note">📌 クラウドどうきをオンにすると、べつのたんまつからもおなじデータがみられます。</div>
+    <div class="form-group"><label class="form-label">Supabase URL</label><input type="url" class="form-input" id="sb-url" placeholder="https://xxxxx.supabase.co"></div>
+    <div class="form-group"><label class="form-label">Supabase Anon Key</label><input type="text" class="form-input" id="sb-key" placeholder="eyJhbGci..."></div>
+    <div class="form-group"><label class="form-label">かぞくコード</label><input type="text" class="form-input" id="sb-family" placeholder="たとえば：rin-family-2024" maxlength="40"></div>
+    <div class="btn-group">
+      <button class="btn btn-sm btn-primary" onclick="connectSupabase()" style="flex:1;">🔗 せつぞく</button>
+      <button class="btn btn-sm btn-danger" onclick="disconnectSupabase()" style="flex:1;">🔌 せつだん</button>
+    </div>
+    <div style="margin-top:10px;"><button class="btn btn-sm btn-accent" onclick="syncToCloud()" style="width:100%;" id="btn-sync-cloud" disabled>☁ クラウドにおくる</button></div>
+    <div style="margin-top:8px;"><button class="btn btn-sm btn-secondary" onclick="syncFromCloud()" style="width:100%;" id="btn-sync-local" disabled>📥 クラウドからもらう</button></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🗄 データかんり</div>
+    <button class="btn btn-sm btn-outline mb-8" onclick="showSampleDialog()" style="width:100%;">📦 サンプルデータをついか</button>
+    <button class="btn btn-sm btn-danger" onclick="clearAllData()" style="width:100%;">🗑 すべてのデータをさくじょ</button>
+  </div>
+  <div class="card">
+    <div class="card-title">📖 Supabaseセットアップ</div>
+    <div style="font-size:12px; line-height:1.7;">
+      <b>1.</b> <a href="https://supabase.com" target="_blank">supabase.com</a> でプロジェクト作成<br>
+      <b>2.</b> SQL Editor で以下を実行：<br>
+      <div style="background:#f5f5f5; padding:8px; border-radius:8px; margin:6px 0; font-family:monospace; font-size:10px; overflow-x:auto; white-space:pre;">create table clothes (
+  id text primary key,
+  family_code text not null,
+  name text not null,
+  category text not null,
+  color text not null,
+  season text default 'all',
+  washing boolean default false,
+  fav boolean default false,
+  photo_url text,
+  wear_count int default 0,
+  last_worn text,
+  created_at timestamptz default now()
+);
+create table wear_history (
+  id text primary key,
+  family_code text not null,
+  wear_date text not null,
+  tops_id text, bottoms_id text, outer_id text,
+  created_at timestamptz default now()
+);
+alter table clothes enable row level security;
+alter table wear_history enable row level security;
+create policy "allow_all" on clothes for all using (true) with check (true);
+create policy "allow_all" on wear_history for all using (true) with check (true);</div>
+      <b>3.</b> Storage で <code>clothes-photos</code> バケット作成（Public）<br>
+      <b>4.</b> Settings→API から URL と anon key をコピー<br>
+    </div>
   </div>
 </div>
 
-<!-- ===== 下部ナビ ===== -->
+<!-- 下部ナビ -->
 
 <nav class="bottom-nav">
-  <button class="nav-btn active" data-screen="home" onclick="switchScreen('home')">
-    <span class="nav-icon">🏠</span>ホーム
-  </button>
-  <button class="nav-btn" data-screen="propose" onclick="switchScreen('propose')">
-    <span class="nav-icon">✨</span>ていあん
-  </button>
-  <button class="nav-btn" data-screen="list" onclick="switchScreen('list')">
-    <span class="nav-icon">👚</span>ふく
-  </button>
-  <button class="nav-btn" data-screen="register" onclick="switchScreen('register')">
-    <span class="nav-icon">➕</span>とうろく
-  </button>
-  <button class="nav-btn" data-screen="history" onclick="switchScreen('history')">
-    <span class="nav-icon">📖</span>きろく
-  </button>
+  <button class="nav-btn active" data-screen="home" onclick="switchScreen('home')"><span class="nav-icon">🏠</span>ホーム</button>
+  <button class="nav-btn" data-screen="propose" onclick="switchScreen('propose')"><span class="nav-icon">✨</span>ていあん</button>
+  <button class="nav-btn" data-screen="list" onclick="switchScreen('list')"><span class="nav-icon">👚</span>ふく</button>
+  <button class="nav-btn" data-screen="register" onclick="startNewRegistration()"><span class="nav-icon">➕</span>とうろく</button>
+  <button class="nav-btn" data-screen="history" onclick="switchScreen('history')"><span class="nav-icon">📖</span>きろく</button>
 </nav>
 
-<!-- ===== 服詳細モーダル ===== -->
+<!-- 服詳細モーダル -->
 
 <div class="modal-overlay" id="detail-modal" onclick="closeDetailModal(event)">
-  <div class="modal-content" id="detail-content">
-    <div class="modal-handle"></div>
-    <div id="detail-body"></div>
-  </div>
+  <div class="modal-content"><div class="modal-handle"></div><div id="detail-body"></div></div>
 </div>
 
-<!-- ===== 確認ダイアログ ===== -->
+<!-- 確認ダイアログ -->
 
 <div class="confirm-overlay" id="confirm-dialog">
   <div class="confirm-box">
@@ -658,956 +566,738 @@ transition: left .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   </div>
 </div>
 
-<!-- ===== トースト ===== -->
-
 <div class="toast" id="toast"></div>
 
 <script>
 /* ================================================================
-   リンのコーデアプリ - メインスクリプト
+   リンのコーデアプリ v2
+   修正: 登録安定化 / 写真端末保存 / Supabase同期
    ================================================================ */
 
-// ===== 定数 =====
 const STORAGE_CLOTHES = 'rin_clothes';
 const STORAGE_HISTORY = 'rin_history';
+const STORAGE_SB_CONFIG = 'rin_sb_config';
+const PHOTO_MAX_SIZE = 600;
+const PHOTO_QUALITY = 0.65;
 
 const COLORS = [
-  { id: 'white', name: 'しろ', hex: '#FFFFFF', border: '#DDD' },
-  { id: 'black', name: 'くろ', hex: '#333333', border: '#333' },
-  { id: 'gray', name: 'グレー', hex: '#999999', border: '#999' },
-  { id: 'red', name: 'あか', hex: '#E53935', border: '#E53935' },
-  { id: 'pink', name: 'ピンク', hex: '#EC407A', border: '#EC407A' },
-  { id: 'orange', name: 'オレンジ', hex: '#FF9800', border: '#FF9800' },
-  { id: 'yellow', name: 'きいろ', hex: '#FDD835', border: '#F9A825' },
-  { id: 'green', name: 'みどり', hex: '#43A047', border: '#43A047' },
-  { id: 'blue', name: 'あお', hex: '#1E88E5', border: '#1E88E5' },
-  { id: 'navy', name: 'ネイビー', hex: '#283593', border: '#283593' },
-  { id: 'purple', name: 'むらさき', hex: '#8E24AA', border: '#8E24AA' },
-  { id: 'brown', name: 'ちゃいろ', hex: '#6D4C41', border: '#6D4C41' },
-  { id: 'beige', name: 'ベージュ', hex: '#D7CCC8', border: '#BCAAA4' },
-  { id: 'multi', name: 'カラフル', hex: 'linear-gradient(135deg,#E53935,#FDD835,#1E88E5,#43A047)', border: '#888' },
+  {id:'white',name:'しろ',hex:'#FFFFFF',border:'#DDD'},{id:'black',name:'くろ',hex:'#333333',border:'#333'},
+  {id:'gray',name:'グレー',hex:'#999999',border:'#999'},{id:'red',name:'あか',hex:'#E53935',border:'#E53935'},
+  {id:'pink',name:'ピンク',hex:'#EC407A',border:'#EC407A'},{id:'orange',name:'オレンジ',hex:'#FF9800',border:'#FF9800'},
+  {id:'yellow',name:'きいろ',hex:'#FDD835',border:'#F9A825'},{id:'green',name:'みどり',hex:'#43A047',border:'#43A047'},
+  {id:'blue',name:'あお',hex:'#1E88E5',border:'#1E88E5'},{id:'navy',name:'ネイビー',hex:'#283593',border:'#283593'},
+  {id:'purple',name:'むらさき',hex:'#8E24AA',border:'#8E24AA'},{id:'brown',name:'ちゃいろ',hex:'#6D4C41',border:'#6D4C41'},
+  {id:'beige',name:'ベージュ',hex:'#D7CCC8',border:'#BCAAA4'},
+  {id:'multi',name:'カラフル',hex:'linear-gradient(135deg,#E53935,#FDD835,#1E88E5,#43A047)',border:'#888'},
 ];
+const CATEGORY_NAMES = {tops:'トップス',bottoms:'ボトムス',outer:'アウター'};
+const SEASON_NAMES = {all:'オールシーズン',spring:'はる',summer:'なつ',autumn:'あき',winter:'ふゆ'};
+const WEATHER_NAMES = {sunny:'はれ',cloudy:'くもり',rainy:'あめ',snowy:'ゆき'};
 
-const CATEGORY_NAMES = { tops: 'トップス', bottoms: 'ボトムス', outer: 'アウター' };
-const SEASON_NAMES = { all: 'オールシーズン', spring: 'はる', summer: 'なつ', autumn: 'あき', winter: 'ふゆ' };
-const WEATHER_NAMES = { sunny: 'はれ', cloudy: 'くもり', rainy: 'あめ', snowy: 'ゆき' };
+/* ===== アプリ内部状態（モジュール変数） ===== */
+let _isSaving = false;
+let _pendingPhotoBase64 = '';
+let _pendingPhotoBlob = null;
+let _editingId = '';
+let _currentFilter = 'all';
+let _supabase = null;
+let _familyCode = '';
+let _currentProposals = [];
 
-// ===== データ管理 =====
-/** localStorage から服データを読み込む */
+/* ================================================================
+   データ管理（localStorage）
+   ================================================================ */
 function loadClothes() {
-  try {
-    const raw = localStorage.getItem(STORAGE_CLOTHES);
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch (e) {
-    console.warn('服データ読み込みエラー:', e);
-    return [];
-  }
+  try { const r = localStorage.getItem(STORAGE_CLOTHES); return r ? (Array.isArray(JSON.parse(r)) ? JSON.parse(r) : []) : []; }
+  catch(e) { console.warn('服データ読み込みエラー:',e); return []; }
 }
-
-/** localStorage に服データを書き込む */
 function saveClothesData(clothes) {
-  try {
-    localStorage.setItem(STORAGE_CLOTHES, JSON.stringify(clothes));
-  } catch (e) {
-    console.error('服データ保存エラー:', e);
-    showToast('ほぞんにしっぱいしました');
+  try { localStorage.setItem(STORAGE_CLOTHES, JSON.stringify(clothes)); return true; }
+  catch(e) {
+    console.error('保存エラー:',e);
+    if (e.name==='QuotaExceededError'||e.code===22) showToast('ようりょうがいっぱいです。写真をへらしてください');
+    else showToast('ほぞんにしっぱいしました');
+    return false;
   }
 }
-
-/** 着用履歴を読み込む */
 function loadHistory() {
-  try {
-    const raw = localStorage.getItem(STORAGE_HISTORY);
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch (e) {
-    console.warn('履歴読み込みエラー:', e);
-    return [];
-  }
+  try { const r = localStorage.getItem(STORAGE_HISTORY); return r ? (Array.isArray(JSON.parse(r)) ? JSON.parse(r) : []) : []; }
+  catch(e) { return []; }
 }
-
-/** 着用履歴を保存する */
 function saveHistoryData(history) {
+  try { localStorage.setItem(STORAGE_HISTORY, JSON.stringify(history)); return true; }
+  catch(e) { showToast('きろくほぞんエラー'); return false; }
+}
+
+/* ================================================================
+   画像圧縮
+   ================================================================ */
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('ファイル読み込みしっぱい'));
+    reader.onload = function(e) {
+      img.onerror = () => reject(new Error('がぞう読み込みしっぱい'));
+      img.onload = function() {
+        try {
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if (w > PHOTO_MAX_SIZE || h > PHOTO_MAX_SIZE) {
+            if (w > h) { h = Math.round(h * PHOTO_MAX_SIZE / w); w = PHOTO_MAX_SIZE; }
+            else { w = Math.round(w * PHOTO_MAX_SIZE / h); h = PHOTO_MAX_SIZE; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(function(blob) {
+            if (!blob) { reject(new Error('Blob変換しっぱい')); return; }
+            const r2 = new FileReader();
+            r2.onload = () => resolve({ base64: r2.result, blob });
+            r2.onerror = () => reject(new Error('Base64変換しっぱい'));
+            r2.readAsDataURL(blob);
+          }, 'image/jpeg', PHOTO_QUALITY);
+        } catch(err) { reject(err); }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ================================================================
+   写真選択・プレビュー・端末保存
+   ================================================================ */
+async function handlePhotoSelect(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('がぞうファイルをえらんでね'); event.target.value=''; return; }
+  if (file.size > 15*1024*1024) { showToast('ファイルがおおきすぎるよ（15MBまで）'); event.target.value=''; return; }
+
+  const preview = document.getElementById('photo-preview');
+  preview.innerHTML = '<span class="spinner"></span><span>しゃしんをよみこみちゅう...</span>';
+
   try {
-    localStorage.setItem(STORAGE_HISTORY, JSON.stringify(history));
-  } catch (e) {
-    console.error('履歴保存エラー:', e);
-    showToast('きろくのほぞんにしっぱいしました');
+    const result = await compressImage(file);
+    _pendingPhotoBase64 = result.base64;
+    _pendingPhotoBlob = result.blob;
+    preview.innerHTML = '<img src="'+result.base64+'" alt="プレビュー">';
+    preview.classList.add('has-photo');
+    document.getElementById('photo-extra-buttons').classList.add('show');
+  } catch(err) {
+    console.error('写真圧縮エラー:', err);
+    showToast('しゃしんのよみこみにしっぱいしました');
+    resetPhotoUI();
   }
+  event.target.value = '';
 }
 
-// ===== 画面切り替え =====
-function switchScreen(name) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const target = document.getElementById('screen-' + name);
-  if (target) target.classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.screen === name);
-  });
-  // 画面固有の初期化
-  if (name === 'home') refreshHome();
-  if (name === 'list') renderClothesList();
-  if (name === 'history') renderHistory();
-  if (name === 'register') {
-    // 新規登録モードにリセット（編集中でなければ）
-    if (!document.getElementById('edit-id').value) {
-      resetRegisterForm();
+function downloadCurrentPhoto() {
+  if (!_pendingPhotoBlob && !_pendingPhotoBase64) { showToast('ほぞんできるしゃしんがないよ'); return; }
+  try {
+    let url;
+    if (_pendingPhotoBlob) { url = URL.createObjectURL(_pendingPhotoBlob); }
+    else {
+      const bin = atob(_pendingPhotoBase64.split(',')[1]);
+      const buf = new Uint8Array(bin.length);
+      for (let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+      url = URL.createObjectURL(new Blob([buf],{type:'image/jpeg'}));
     }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'rin-fuku-'+new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)+'.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    showToast('📥 しゃしんをほぞんしたよ！');
+  } catch(e) { console.error('DLエラー:',e); showToast('ほぞんにしっぱい'); }
+}
+
+function clearPhoto() { _pendingPhotoBase64=''; _pendingPhotoBlob=null; resetPhotoUI(); }
+
+function resetPhotoUI() {
+  const p = document.getElementById('photo-preview');
+  p.innerHTML = '<span class="placeholder-icon">📸</span><span>したのボタンからしゃしんをえらんでね</span>';
+  p.classList.remove('has-photo');
+  document.getElementById('photo-extra-buttons').classList.remove('show');
+  document.getElementById('photo-input-camera').value='';
+  document.getElementById('photo-input-gallery').value='';
+}
+
+/* ================================================================
+   服登録処理（修正版）
+   ================================================================ */
+function startNewRegistration() { _editingId=''; resetRegisterForm(); switchScreen('register'); }
+
+function resetRegisterForm() {
+  _editingId=''; _pendingPhotoBase64=''; _pendingPhotoBlob=null; _isSaving=false;
+  document.getElementById('register-title').textContent='👕 ふくをとうろく';
+  document.getElementById('reg-name').value='';
+  document.getElementById('reg-category').value='';
+  document.querySelectorAll('#color-options .color-opt').forEach(o=>o.classList.remove('active'));
+  document.querySelectorAll('#season-chips .chip').forEach(c=>c.classList.remove('active'));
+  const ds = document.querySelector('#season-chips .chip[data-season="all"]');
+  if(ds) ds.classList.add('active');
+  document.getElementById('reg-washing').classList.remove('on');
+  document.getElementById('reg-fav').classList.remove('on');
+  resetPhotoUI(); hideSaveStatus(); enableSaveButton();
+  document.querySelectorAll('.form-error').forEach(e=>e.classList.remove('show'));
+}
+
+function showSaveStatus(type, text) {
+  const el=document.getElementById('save-status');
+  const ic=document.getElementById('save-status-icon');
+  const tx=document.getElementById('save-status-text');
+  el.className='save-status '+type;
+  if(type==='saving') ic.innerHTML='<span class="spinner"></span>';
+  else if(type==='success') ic.textContent='✅';
+  else if(type==='error') ic.textContent='❌';
+  tx.textContent=text;
+}
+function hideSaveStatus() { document.getElementById('save-status').className='save-status'; }
+function disableSaveButton() { const b=document.getElementById('save-btn'); b.disabled=true; b.textContent='⏳ ほぞんちゅう...'; }
+function enableSaveButton() { const b=document.getElementById('save-btn'); b.disabled=false; b.textContent='💾 ほぞんする'; }
+
+async function saveClothing() {
+  if(_isSaving) return;
+  _isSaving=true;
+  disableSaveButton();
+  hideSaveStatus();
+
+  try {
+    let valid=true;
+    const name=document.getElementById('reg-name').value.trim();
+    const category=document.getElementById('reg-category').value;
+    const selColor=document.querySelector('#color-options .color-opt.active');
+    const color=selColor?selColor.dataset.color:'';
+    const seasonEl=document.querySelector('#season-chips .chip.active');
+    const season=seasonEl?seasonEl.dataset.season:'all';
+    const washing=document.getElementById('reg-washing').classList.contains('on');
+    const fav=document.getElementById('reg-fav').classList.contains('on');
+
+    if(!name){document.getElementById('err-name').classList.add('show');valid=false;}
+    else document.getElementById('err-name').classList.remove('show');
+    if(!category){document.getElementById('err-category').classList.add('show');valid=false;}
+    else document.getElementById('err-category').classList.remove('show');
+    if(!color){document.getElementById('err-color').classList.add('show');valid=false;}
+    else document.getElementById('err-color').classList.remove('show');
+
+    if(!valid){showToast('にゅうりょくをかくにんしてね');_isSaving=false;enableSaveButton();return;}
+
+    showSaveStatus('saving','ほぞんしています...');
+    const photoData = _pendingPhotoBase64 || '';
+    const clothes = loadClothes();
+
+    if(_editingId) {
+      const idx=clothes.findIndex(c=>c.id===_editingId);
+      if(idx<0){showSaveStatus('error','へんしゅうたいしょうがみつかりません');_isSaving=false;enableSaveButton();return;}
+      clothes[idx].name=name; clothes[idx].category=category; clothes[idx].color=color;
+      clothes[idx].season=season; clothes[idx].washing=washing; clothes[idx].fav=fav;
+      if(photoData) clothes[idx].photo=photoData;
+    } else {
+      clothes.push({
+        id:generateId(), name, category, color, season, washing, fav,
+        photo:photoData, wearCount:0, lastWorn:null, createdAt:new Date().toISOString(),
+      });
+    }
+
+    const saved=saveClothesData(clothes);
+    if(!saved){showSaveStatus('error','ほぞんにしっぱい（ようりょうぶそく？）');_isSaving=false;enableSaveButton();return;}
+
+    if(_supabase&&_familyCode) {
+      try {
+        showSaveStatus('saving','クラウドにどうきちゅう...');
+        const target=_editingId?clothes.find(c=>c.id===_editingId):clothes[clothes.length-1];
+        await upsertClothesToCloud(target);
+      } catch(e) { console.warn('クラウド同期失敗（ローカル保存済み）:',e); }
+    }
+
+    showSaveStatus('success',_editingId?'へんこうをほぞんしたよ！':'とうろくかんりょう！');
+    showToast(_editingId?'✏ ほぞんしたよ！':'✅ とうろくしたよ！');
+    await sleep(600);
+    resetRegisterForm();
+    switchScreen('list');
+  } catch(err) {
+    console.error('保存エラー:',err);
+    showSaveStatus('error','エラー: '+err.message);
+    showToast('ほぞんにしっぱいしました');
+  } finally {
+    _isSaving=false; enableSaveButton();
   }
-  window.scrollTo(0, 0);
 }
 
-// ===== トースト =====
+/* ================================================================
+   Supabase連携
+   ================================================================ */
+function loadSupabaseConfig() {
+  try{const r=localStorage.getItem(STORAGE_SB_CONFIG);return r?JSON.parse(r):null;}catch{return null;}
+}
+function saveSupabaseConfig(c) {
+  try{localStorage.setItem(STORAGE_SB_CONFIG,JSON.stringify(c));}catch(e){console.error(e);}
+}
+
+async function connectSupabase() {
+  const url=document.getElementById('sb-url').value.trim();
+  const key=document.getElementById('sb-key').value.trim();
+  const family=document.getElementById('sb-family').value.trim();
+  if(!url||!key||!family){showToast('すべてのこうもくをいれてね');return;}
+  try {
+    if(typeof supabase==='undefined'||!supabase.createClient){showToast('Supabaseライブラリがよみこめていません');return;}
+    _supabase=supabase.createClient(url,key);_familyCode=family;
+    const{error}=await _supabase.from('clothes').select('id').limit(1);
+    if(error){console.error(error);_supabase=null;_familyCode='';showToast('せつぞくしっぱい: '+error.message);updateSyncUI();return;}
+    saveSupabaseConfig({url,key,family});
+    showToast('☁ クラウドにせつぞくしました！');updateSyncUI();
+  } catch(e) {
+    _supabase=null;showToast('せつぞくエラー: '+e.message);updateSyncUI();
+  }
+}
+
+function disconnectSupabase() {
+  _supabase=null;_familyCode='';localStorage.removeItem(STORAGE_SB_CONFIG);
+  showToast('クラウドせつぞくかいじょ');updateSyncUI();
+}
+
+async function autoConnectSupabase() {
+  const config=loadSupabaseConfig();
+  if(!config) return;
+  try {
+    if(typeof supabase==='undefined'||!supabase.createClient) return;
+    _supabase=supabase.createClient(config.url,config.key);_familyCode=config.family;
+    document.getElementById('sb-url').value=config.url;
+    document.getElementById('sb-key').value=config.key;
+    document.getElementById('sb-family').value=config.family;
+    const{error}=await _supabase.from('clothes').select('id').limit(1);
+    if(error){_supabase=null;_familyCode='';}
+  } catch(e){_supabase=null;_familyCode='';}
+  updateSyncUI();
+}
+
+function updateSyncUI() {
+  const ind=document.getElementById('sync-indicator');
+  const ic=document.getElementById('sync-icon');
+  const tx=document.getElementById('sync-text');
+  const st=document.getElementById('supabase-status');
+  const stx=document.getElementById('supabase-status-text');
+  if(_supabase&&_familyCode){
+    ind.className='sync-indicator online';ic.textContent='☁';tx.textContent='クラウド';
+    st.className='settings-status connected';stx.textContent='✅ せつぞくちゅう（'+_familyCode+'）';
+    document.getElementById('btn-sync-cloud').disabled=false;
+    document.getElementById('btn-sync-local').disabled=false;
+  } else {
+    ind.className='sync-indicator offline';ic.textContent='💾';tx.textContent='ローカル';
+    st.className='settings-status disconnected';stx.textContent='みせってい（ローカルのみ）';
+    document.getElementById('btn-sync-cloud').disabled=true;
+    document.getElementById('btn-sync-local').disabled=true;
+  }
+}
+
+async function syncToCloud() {
+  if(!_supabase||!_familyCode){showToast('クラウドにせつぞくしてください');return;}
+  const ok=await showConfirm('ローカルのデータをクラウドにおくります。\nクラウドの同じIDはうわがきされます。');
+  if(!ok) return;
+  showToast('☁ どうきちゅう...');
+  try {
+    const clothes=loadClothes();
+    for(const item of clothes) await upsertClothesToCloud(item);
+    const history=loadHistory();
+    for(const rec of history) {
+      await _supabase.from('wear_history').upsert({
+        id:rec.date+'_'+_familyCode, family_code:_familyCode, wear_date:rec.date,
+        tops_id:rec.tops||null, bottoms_id:rec.bottoms||null, outer_id:rec.outer||null,
+      },{onConflict:'id'});
+    }
+    showToast('✅ クラウドどうきかんりょう！');
+  } catch(e){console.error(e);showToast('どうきしっぱい: '+e.message);}
+}
+
+async function syncFromCloud() {
+  if(!_supabase||!_familyCode){showToast('クラウドにせつぞくしてください');return;}
+  const ok=await showConfirm('クラウドからデータをもらいます。\nローカルはうわがきされます。');
+  if(!ok) return;
+  showToast('📥 よみこみちゅう...');
+  try {
+    const{data:cd,error:ce}=await _supabase.from('clothes').select('*').eq('family_code',_familyCode);
+    if(ce) throw ce;
+    const{data:hd,error:he}=await _supabase.from('wear_history').select('*').eq('family_code',_familyCode).order('wear_date',{ascending:false});
+    if(he) throw he;
+    const clothes=(cd||[]).map(r=>({
+      id:r.id, name:r.name, category:r.category, color:r.color, season:r.season||'all',
+      washing:r.washing||false, fav:r.fav||false, photo:r.photo_url||'',
+      wearCount:r.wear_count||0, lastWorn:r.last_worn||null, createdAt:r.created_at,
+    }));
+    saveClothesData(clothes);
+    const history=(hd||[]).map(r=>({date:r.wear_date,tops:r.tops_id||null,bottoms:r.bottoms_id||null,outer:r.outer_id||null}));
+    saveHistoryData(history);
+    showToast('✅ よみこみかんりょう！');refreshHome();
+  } catch(e){console.error(e);showToast('よみこみしっぱい: '+e.message);}
+}
+
+async function upsertClothesToCloud(item) {
+  if(!_supabase||!_familyCode||!item) return;
+  let photoUrl=item.photo||'';
+  if(photoUrl&&photoUrl.startsWith('data:')) {
+    try {
+      const bin=atob(photoUrl.split(',')[1]);
+      const buf=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+      const blob=new Blob([buf],{type:'image/jpeg'});
+      const path=_familyCode+'/'+item.id+'.jpg';
+      const{error:ue}=await _supabase.storage.from('clothes-photos').upload(path,blob,{upsert:true,contentType:'image/jpeg'});
+      if(!ue){
+        const{data:ud}=_supabase.storage.from('clothes-photos').getPublicUrl(path);
+        if(ud&&ud.publicUrl) photoUrl=ud.publicUrl;
+      }
+    } catch(e){console.warn('写真アップロード失敗:',e);}
+  }
+  const{error}=await _supabase.from('clothes').upsert({
+    id:item.id,family_code:_familyCode,name:item.name,category:item.category,color:item.color,
+    season:item.season||'all',washing:item.washing||false,fav:item.fav||false,
+    photo_url:photoUrl,wear_count:item.wearCount||0,last_worn:item.lastWorn||null,
+    created_at:item.createdAt||new Date().toISOString(),
+  },{onConflict:'id'});
+  if(error) throw error;
+}
+
+/* ================================================================
+   画面切り替え
+   ================================================================ */
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const t=document.getElementById('screen-'+name);
+  if(t) t.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));
+  if(name==='home') refreshHome();
+  if(name==='list') renderClothesList();
+  if(name==='history') renderHistory();
+  if(name==='settings') updateSyncUI();
+  window.scrollTo(0,0);
+}
+
+/* ================================================================
+   トースト・確認ダイアログ
+   ================================================================ */
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove('show'),2500);
 }
-
-// ===== 確認ダイアログ =====
-let confirmResolve = null;
+let _confirmResolve=null;
 function showConfirm(msg) {
-  return new Promise(resolve => {
-    confirmResolve = resolve;
-    document.getElementById('confirm-msg').textContent = msg;
-    document.getElementById('confirm-dialog').classList.add('show');
-  });
+  return new Promise(r=>{_confirmResolve=r;document.getElementById('confirm-msg').textContent=msg;document.getElementById('confirm-dialog').classList.add('show');});
 }
 function closeConfirm(result) {
   document.getElementById('confirm-dialog').classList.remove('show');
-  if (confirmResolve) { confirmResolve(result); confirmResolve = null; }
+  if(_confirmResolve){_confirmResolve(result);_confirmResolve=null;}
 }
 
-// ===== ホーム画面 =====
+/* ================================================================
+   ホーム画面
+   ================================================================ */
 function refreshHome() {
-  // 挨拶を時間帯で変える
-  const h = new Date().getHours();
-  const greetEl = document.getElementById('greeting-text');
-  const subEl = document.getElementById('greeting-sub');
-  if (h < 10) { greetEl.textContent = 'おはよう、リン！'; subEl.textContent = 'きょうはなにをきようかな？'; }
-  else if (h < 15) { greetEl.textContent = 'こんにちは、リン！'; subEl.textContent = 'あしたのじゅんびをしよう！'; }
-  else { greetEl.textContent = 'こんばんは、リン！'; subEl.textContent = 'あしたのふくをきめちゃおう！'; }
-
-  // 統計
-  const clothes = loadClothes();
-  const history = loadHistory();
-  const available = clothes.filter(c => !c.washing).length;
-  document.getElementById('stat-total').textContent = clothes.length;
-  document.getElementById('stat-available').textContent = available;
-  document.getElementById('stat-history').textContent = history.length;
-
-  // 最近の履歴（直近3件）
+  const h=new Date().getHours();
+  const g=document.getElementById('greeting-text'),s=document.getElementById('greeting-sub');
+  if(h<10){g.textContent='おはよう、リン！';s.textContent='きょうはなにをきようかな？';}
+  else if(h<15){g.textContent='こんにちは、リン！';s.textContent='あしたのじゅんびをしよう！';}
+  else{g.textContent='こんばんは、リン！';s.textContent='あしたのふくをきめちゃおう！';}
+  const clothes=loadClothes(),history=loadHistory();
+  document.getElementById('stat-total').textContent=clothes.length;
+  document.getElementById('stat-available').textContent=clothes.filter(c=>!c.washing).length;
+  document.getElementById('stat-history').textContent=history.length;
   renderRecentHistory();
 }
 
 function renderRecentHistory() {
-  const container = document.getElementById('recent-history');
-  const history = loadHistory();
-  if (history.length === 0) {
-    container.innerHTML = '<p style="font-size:13px; color:var(--text-light); text-align:center; padding:8px;">まだきろくがないよ</p>';
-    return;
-  }
-  const recent = history.slice(0, 3);
-  const clothes = loadClothes();
-  let html = '';
-  recent.forEach(rec => {
-    const dateStr = formatDate(rec.date);
-    html += `<div style="margin-bottom:8px;"><div style="font-size:12px; color:var(--text-light); margin-bottom:4px;">${dateStr}</div>`;
-    html += '<div style="display:flex; gap:6px;">';
-    ['tops','bottoms','outer'].forEach(cat => {
-      const id = rec[cat];
-      if (!id) return;
-      const item = clothes.find(c => c.id === id);
-      if (!item) return;
-      html += `<div style="flex:1; text-align:center;">
-        <div style="width:100%; aspect-ratio:1; border-radius:8px; overflow:hidden; background:linear-gradient(135deg,#F5E6FF,#E3F2FD); margin-bottom:2px;">
-          ${item.photo ? `<img src="${item.photo}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">👕</div>`}
-        </div>
-        <div style="font-size:10px;">${item.name}</div>
-      </div>`;
+  const c=document.getElementById('recent-history'),history=loadHistory();
+  if(!history.length){c.innerHTML='<p style="font-size:13px;color:var(--text-light);text-align:center;padding:8px;">まだきろくがないよ</p>';return;}
+  const clothes=loadClothes();let html='';
+  history.slice(0,3).forEach(rec=>{
+    html+='<div style="margin-bottom:8px;"><div style="font-size:12px;color:var(--text-light);margin-bottom:4px;">'+formatDate(rec.date)+'</div><div style="display:flex;gap:6px;">';
+    ['tops','bottoms','outer'].forEach(cat=>{
+      const id=rec[cat];if(!id)return;const item=clothes.find(x=>x.id===id);if(!item)return;
+      html+='<div style="flex:1;text-align:center;"><div style="width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#F5E6FF,#E3F2FD);margin-bottom:2px;">'
+        +(item.photo?'<img src="'+item.photo+'" style="width:100%;height:100%;object-fit:cover;">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">'+getCategoryEmoji(item.category)+'</div>')
+        +'</div><div style="font-size:10px;">'+escapeHtml(item.name)+'</div></div>';
     });
-    html += '</div></div>';
+    html+='</div></div>';
   });
-  container.innerHTML = html;
+  c.innerHTML=html;
 }
 
-// ===== 色選択UI初期化 =====
+/* ================================================================
+   色選択・季節選択
+   ================================================================ */
 function initColorOptions() {
-  const container = document.getElementById('color-options');
-  let html = '';
-  COLORS.forEach(c => {
-    const bg = c.id === 'multi' ? c.hex : c.hex;
-    const style = c.id === 'multi'
-      ? `background:${c.hex}; border-color:${c.border};`
-      : `background:${c.hex}; border-color:${c.border};`;
-    html += `<div class="color-opt" data-color="${c.id}" title="${c.name}" style="${style}" onclick="selectColor('${c.id}', this)"></div>`;
+  const c=document.getElementById('color-options');let h='';
+  COLORS.forEach(co=>{
+    h+='<div class="color-opt" data-color="'+co.id+'" title="'+co.name+'" style="background:'+co.hex+';border-color:'+co.border+';" onclick="selectColor(this)"></div>';
   });
-  container.innerHTML = html;
+  c.innerHTML=h;
 }
-
-function selectColor(colorId, el) {
-  document.querySelectorAll('#color-options .color-opt').forEach(o => o.classList.remove('active'));
+function selectColor(el) {
+  document.querySelectorAll('#color-options .color-opt').forEach(o=>o.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('reg-color').value = colorId;
 }
-
-// ===== 季節選択 =====
-function selectSeason(season, el) {
-  document.querySelectorAll('#season-chips .chip').forEach(c => c.classList.remove('active'));
+function selectSeason(el) {
+  document.querySelectorAll('#season-chips .chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
 }
 
-// ===== 写真選択 =====
-function handlePhotoSelect(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (!file.type.startsWith('image/')) {
-    showToast('がぞうファイルをえらんでね');
-    return;
-  }
-  // 5MB制限
-  if (file.size > 5 * 1024 * 1024) {
-    showToast('ファイルがおおきすぎるよ（5MBまで）');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const uploadEl = document.getElementById('photo-upload');
-    // 既存のimgがあれば削除
-    const existingImg = uploadEl.querySelector('img');
-    if (existingImg) existingImg.remove();
-    const img = document.createElement('img');
-    img.src = e.target.result;
-    uploadEl.appendChild(img);
-    uploadEl.dataset.photo = e.target.result;
-  };
-  reader.readAsDataURL(file);
+/* ================================================================
+   服一覧
+   ================================================================ */
+function filterClothes(f,el) {
+  _currentFilter=f;
+  document.querySelectorAll('#filter-bar .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');renderClothesList();
 }
-
-// ===== 服登録フォームリセット =====
-function resetRegisterForm() {
-  document.getElementById('edit-id').value = '';
-  document.getElementById('register-title').textContent = '👕 ふくをとうろく';
-  document.getElementById('reg-name').value = '';
-  document.getElementById('reg-category').value = '';
-  document.getElementById('reg-color').value = '';
-  document.querySelectorAll('#color-options .color-opt').forEach(o => o.classList.remove('active'));
-  document.querySelectorAll('#season-chips .chip').forEach(c => c.classList.remove('active'));
-  document.querySelector('#season-chips .chip[data-season="all"]').classList.add('active');
-  document.getElementById('reg-washing').classList.remove('on');
-  document.getElementById('reg-fav').classList.remove('on');
-  const uploadEl = document.getElementById('photo-upload');
-  const existingImg = uploadEl.querySelector('img');
-  if (existingImg) existingImg.remove();
-  uploadEl.dataset.photo = '';
-  document.getElementById('photo-input').value = '';
-  // エラー非表示
-  document.querySelectorAll('.form-error').forEach(e => e.classList.remove('show'));
-}
-
-// ===== 服登録保存 =====
-function saveClothing() {
-  let valid = true;
-  const name = document.getElementById('reg-name').value.trim();
-  const category = document.getElementById('reg-category').value;
-  const color = document.getElementById('reg-color').value;
-  const seasonEl = document.querySelector('#season-chips .chip.active');
-  const season = seasonEl ? seasonEl.dataset.season : 'all';
-  const washing = document.getElementById('reg-washing').classList.contains('on');
-  const fav = document.getElementById('reg-fav').classList.contains('on');
-  const photo = document.getElementById('photo-upload').dataset.photo || '';
-  const editId = document.getElementById('edit-id').value;
-
-  // バリデーション
-  if (!name) {
-    document.getElementById('err-name').classList.add('show');
-    valid = false;
-  } else {
-    document.getElementById('err-name').classList.remove('show');
-  }
-  if (!category) {
-    document.getElementById('err-category').classList.add('show');
-    valid = false;
-  } else {
-    document.getElementById('err-category').classList.remove('show');
-  }
-  if (!color) {
-    document.getElementById('err-color').classList.add('show');
-    valid = false;
-  } else {
-    document.getElementById('err-color').classList.remove('show');
-  }
-  if (!valid) {
-    showToast('にゅうりょくをかくにんしてね');
-    return;
-  }
-
-  const clothes = loadClothes();
-
-  if (editId) {
-    // 編集モード
-    const idx = clothes.findIndex(c => c.id === editId);
-    if (idx >= 0) {
-      clothes[idx].name = name;
-      clothes[idx].category = category;
-      clothes[idx].color = color;
-      clothes[idx].season = season;
-      clothes[idx].washing = washing;
-      clothes[idx].fav = fav;
-      if (photo) clothes[idx].photo = photo;
-      saveClothesData(clothes);
-      showToast('へんこうをほぞんしたよ！');
-    }
-  } else {
-    // 新規登録
-    const item = {
-      id: generateId(),
-      name: name,
-      category: category,
-      color: color,
-      season: season,
-      washing: washing,
-      fav: fav,
-      photo: photo,
-      wearCount: 0,
-      lastWorn: null,
-      createdAt: new Date().toISOString(),
-    };
-    clothes.push(item);
-    saveClothesData(clothes);
-    showToast('とうろくしたよ！');
-  }
-
-  resetRegisterForm();
-  switchScreen('list');
-}
-
-function generateId() {
-  return 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-}
-
-// ===== 服一覧 =====
-let currentFilter = 'all';
-function filterClothes(filter, el) {
-  currentFilter = filter;
-  document.querySelectorAll('#filter-bar .chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  renderClothesList();
-}
-
 function renderClothesList() {
-  const grid = document.getElementById('clothes-grid');
-  let clothes = loadClothes();
-
-  // フィルタ適用
-  if (currentFilter === 'tops') clothes = clothes.filter(c => c.category === 'tops');
-  else if (currentFilter === 'bottoms') clothes = clothes.filter(c => c.category === 'bottoms');
-  else if (currentFilter === 'outer') clothes = clothes.filter(c => c.category === 'outer');
-  else if (currentFilter === 'washing') clothes = clothes.filter(c => c.washing);
-  else if (currentFilter === 'fav') clothes = clothes.filter(c => c.fav);
-
-  if (clothes.length === 0) {
-    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:32px; color:var(--text-light);">'
-      + '<div style="font-size:48px; margin-bottom:8px;">👚</div>'
-      + '<p>ふくがまだないよ</p>'
-      + '<p style="font-size:12px; margin-top:4px;">とうろくしてみよう！</p></div>';
-    return;
-  }
-
-  let html = '';
-  clothes.forEach(item => {
-    const colorObj = COLORS.find(c => c.id === item.color);
-    const colorName = colorObj ? colorObj.name : '';
-    html += `<div class="clothes-card" onclick="showClothesDetail('${item.id}')">
-      <div class="card-photo">
-        ${item.photo
-          ? `<img src="${item.photo}" alt="${item.name}">`
-          : `<span style="font-size:40px;">${getCategoryEmoji(item.category)}</span>`}
-        <div class="card-badges">
-          ${item.washing ? '<span class="badge" title="せんたく中">🫧</span>' : ''}
-          ${item.fav ? '<span class="badge" title="おきにいり">⭐</span>' : ''}
-        </div>
-      </div>
-      <div class="card-info">
-        <div class="card-name">${escapeHtml(item.name)}</div>
-        <div class="card-meta">${CATEGORY_NAMES[item.category] || ''} ・ ${colorName} ・ ${item.wearCount}回</div>
-      </div>
-    </div>`;
+  const grid=document.getElementById('clothes-grid');
+  let clothes=loadClothes();
+  if(_currentFilter==='tops') clothes=clothes.filter(c=>c.category==='tops');
+  else if(_currentFilter==='bottoms') clothes=clothes.filter(c=>c.category==='bottoms');
+  else if(_currentFilter==='outer') clothes=clothes.filter(c=>c.category==='outer');
+  else if(_currentFilter==='washing') clothes=clothes.filter(c=>c.washing);
+  else if(_currentFilter==='fav') clothes=clothes.filter(c=>c.fav);
+  if(!clothes.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text-light);"><div style="font-size:48px;margin-bottom:8px;">👚</div><p>ふくがまだないよ</p></div>';return;}
+  let html='';
+  clothes.forEach(item=>{
+    const co=COLORS.find(c=>c.id===item.color);
+    html+='<div class="clothes-card" onclick="showClothesDetail(\''+item.id+'\')">'
+      +'<div class="card-photo">'
+      +(item.photo?'<img src="'+item.photo+'" alt="'+escapeHtml(item.name)+'">':'<span style="font-size:40px;">'+getCategoryEmoji(item.category)+'</span>')
+      +'<div class="card-badges">'+(item.washing?'<span class="badge">🫧</span>':'')+(item.fav?'<span class="badge">⭐</span>':'')+'</div></div>'
+      +'<div class="card-info"><div class="card-name">'+escapeHtml(item.name)+'</div>'
+      +'<div class="card-meta">'+(CATEGORY_NAMES[item.category]||'')+' ・ '+(co?co.name:'')+' ・ '+item.wearCount+'回</div></div></div>';
   });
-  grid.innerHTML = html;
+  grid.innerHTML=html;
 }
 
-function getCategoryEmoji(cat) {
-  if (cat === 'tops') return '👕';
-  if (cat === 'bottoms') return '👖';
-  if (cat === 'outer') return '🧥';
-  return '👗';
-}
-
-// ===== 服詳細モーダル =====
+/* ================================================================
+   服詳細モーダル
+   ================================================================ */
 function showClothesDetail(id) {
-  const clothes = loadClothes();
-  const item = clothes.find(c => c.id === id);
-  if (!item) return;
-
-  const colorObj = COLORS.find(c => c.id === item.color);
-  const lastWornStr = item.lastWorn ? formatDate(item.lastWorn) : 'なし';
-
-  const body = document.getElementById('detail-body');
-  body.innerHTML = `
-    <div class="modal-photo">
-      ${item.photo
-        ? `<img src="${item.photo}" alt="${item.name}">`
-        : `<div style="width:100%;height:200px;display:flex;align-items:center;justify-content:center;font-size:64px;">${getCategoryEmoji(item.category)}</div>`}
-    </div>
-    <div class="modal-name">${escapeHtml(item.name)}</div>
-    <div class="modal-details">
-      <div class="detail-item"><div class="detail-label">カテゴリ</div>${CATEGORY_NAMES[item.category] || ''}</div>
-      <div class="detail-item"><div class="detail-label">いろ</div>${colorObj ? colorObj.name : ''}</div>
-      <div class="detail-item"><div class="detail-label">きせつ</div>${SEASON_NAMES[item.season] || ''}</div>
-      <div class="detail-item"><div class="detail-label">きたかいすう</div>${item.wearCount}回</div>
-      <div class="detail-item"><div class="detail-label">さいごにきた日</div>${lastWornStr}</div>
-      <div class="detail-item"><div class="detail-label">じょうたい</div>${item.washing ? '🫧 せんたく中' : '✅ OK'}</div>
-    </div>
-    <div class="modal-actions">
-      <div class="btn-group">
-        <button class="btn btn-sm ${item.washing ? 'btn-accent' : 'btn-secondary'}" onclick="toggleWashing('${item.id}')" style="flex:1;">
-          ${item.washing ? '✅ せんたくおわり' : '🫧 せんたく中にする'}
-        </button>
-        <button class="btn btn-sm ${item.fav ? 'btn-outline' : 'btn-accent'}" onclick="toggleFav('${item.id}')" style="flex:1;">
-          ${item.fav ? '⭐ おきにいりかいじょ' : '⭐ おきにいり'}
-        </button>
-      </div>
-      <button class="btn btn-sm btn-secondary" onclick="editClothing('${item.id}')" style="width:100%;">✏ へんしゅう</button>
-      <button class="btn btn-sm btn-danger" onclick="deleteClothing('${item.id}')" style="width:100%;">🗑 さくじょ</button>
-    </div>
-  `;
+  const clothes=loadClothes(),item=clothes.find(c=>c.id===id);if(!item)return;
+  const co=COLORS.find(c=>c.id===item.color),lw=item.lastWorn?formatDate(item.lastWorn):'なし';
+  document.getElementById('detail-body').innerHTML=
+    '<div class="modal-photo">'+(item.photo?'<img src="'+item.photo+'">':'<div style="width:100%;height:200px;display:flex;align-items:center;justify-content:center;font-size:64px;">'+getCategoryEmoji(item.category)+'</div>')+'</div>'
+    +'<div class="modal-name">'+escapeHtml(item.name)+'</div>'
+    +'<div class="modal-details">'
+    +'<div class="detail-item"><div class="detail-label">カテゴリ</div>'+(CATEGORY_NAMES[item.category]||'')+'</div>'
+    +'<div class="detail-item"><div class="detail-label">いろ</div>'+(co?co.name:'')+'</div>'
+    +'<div class="detail-item"><div class="detail-label">きせつ</div>'+(SEASON_NAMES[item.season]||'')+'</div>'
+    +'<div class="detail-item"><div class="detail-label">きたかいすう</div>'+item.wearCount+'回</div>'
+    +'<div class="detail-item"><div class="detail-label">さいごにきた日</div>'+lw+'</div>'
+    +'<div class="detail-item"><div class="detail-label">じょうたい</div>'+(item.washing?'🫧 せんたく中':'✅ OK')+'</div></div>'
+    +'<div class="modal-actions">'
+    +'<div class="btn-group"><button class="btn btn-sm '+(item.washing?'btn-accent':'btn-secondary')+'" onclick="toggleWashing(\''+id+'\')" style="flex:1;">'+(item.washing?'✅ せんたくおわり':'🫧 せんたく中にする')+'</button>'
+    +'<button class="btn btn-sm '+(item.fav?'btn-outline':'btn-accent')+'" onclick="toggleFav(\''+id+'\')" style="flex:1;">'+(item.fav?'⭐ かいじょ':'⭐ おきにいり')+'</button></div>'
+    +'<button class="btn btn-sm btn-secondary" onclick="editClothing(\''+id+'\')" style="width:100%;">✏ へんしゅう</button>'
+    +'<button class="btn btn-sm btn-danger" onclick="deleteClothing(\''+id+'\')" style="width:100%;">🗑 さくじょ</button></div>';
   document.getElementById('detail-modal').classList.add('show');
 }
-
-function closeDetailModal(event) {
-  if (event.target === document.getElementById('detail-modal') || event.target.classList.contains('modal-handle')) {
-    document.getElementById('detail-modal').classList.remove('show');
-  }
+function closeDetailModal(e) {
+  if(e.target===document.getElementById('detail-modal')) document.getElementById('detail-modal').classList.remove('show');
 }
-
-function toggleWashing(id) {
-  const clothes = loadClothes();
-  const item = clothes.find(c => c.id === id);
-  if (!item) return;
-  item.washing = !item.washing;
-  saveClothesData(clothes);
+async function toggleWashing(id) {
+  const clothes=loadClothes(),item=clothes.find(c=>c.id===id);if(!item)return;
+  item.washing=!item.washing;saveClothesData(clothes);
+  if(_supabase&&_familyCode){try{await upsertClothesToCloud(item);}catch(e){}}
   document.getElementById('detail-modal').classList.remove('show');
-  renderClothesList();
-  showToast(item.washing ? 'せんたく中にしたよ' : 'せんたくおわり！');
+  renderClothesList();showToast(item.washing?'🫧 せんたく中':'✅ せんたくおわり！');
 }
-
-function toggleFav(id) {
-  const clothes = loadClothes();
-  const item = clothes.find(c => c.id === id);
-  if (!item) return;
-  item.fav = !item.fav;
-  saveClothesData(clothes);
+async function toggleFav(id) {
+  const clothes=loadClothes(),item=clothes.find(c=>c.id===id);if(!item)return;
+  item.fav=!item.fav;saveClothesData(clothes);
+  if(_supabase&&_familyCode){try{await upsertClothesToCloud(item);}catch(e){}}
   document.getElementById('detail-modal').classList.remove('show');
-  renderClothesList();
-  showToast(item.fav ? 'おきにいりにしたよ⭐' : 'おきにいりかいじょ');
+  renderClothesList();showToast(item.fav?'⭐ おきにいり！':'かいじょ');
 }
-
 function editClothing(id) {
-  const clothes = loadClothes();
-  const item = clothes.find(c => c.id === id);
-  if (!item) return;
-
+  const clothes=loadClothes(),item=clothes.find(c=>c.id===id);if(!item)return;
   document.getElementById('detail-modal').classList.remove('show');
-  resetRegisterForm();
-
-  // フォームに値を入れる
-  document.getElementById('edit-id').value = item.id;
-  document.getElementById('register-title').textContent = '✏ ふくをへんしゅう';
-  document.getElementById('reg-name').value = item.name;
-  document.getElementById('reg-category').value = item.category;
-  document.getElementById('reg-color').value = item.color;
-  // 色選択
-  const colorEl = document.querySelector(`#color-options .color-opt[data-color="${item.color}"]`);
-  if (colorEl) colorEl.classList.add('active');
-  // 季節
-  document.querySelectorAll('#season-chips .chip').forEach(c => c.classList.remove('active'));
-  const seasonEl = document.querySelector(`#season-chips .chip[data-season="${item.season}"]`);
-  if (seasonEl) seasonEl.classList.add('active');
-  // 洗濯・お気に入り
-  if (item.washing) document.getElementById('reg-washing').classList.add('on');
-  if (item.fav) document.getElementById('reg-fav').classList.add('on');
-  // 写真
-  if (item.photo) {
-    const uploadEl = document.getElementById('photo-upload');
-    const img = document.createElement('img');
-    img.src = item.photo;
-    uploadEl.appendChild(img);
-    uploadEl.dataset.photo = item.photo;
+  resetRegisterForm(); _editingId=item.id;
+  document.getElementById('register-title').textContent='✏ ふくをへんしゅう';
+  document.getElementById('reg-name').value=item.name;
+  document.getElementById('reg-category').value=item.category;
+  const ce=document.querySelector('#color-options .color-opt[data-color="'+item.color+'"]');
+  if(ce) ce.classList.add('active');
+  document.querySelectorAll('#season-chips .chip').forEach(c=>c.classList.remove('active'));
+  const se=document.querySelector('#season-chips .chip[data-season="'+item.season+'"]');
+  if(se) se.classList.add('active');
+  if(item.washing) document.getElementById('reg-washing').classList.add('on');
+  if(item.fav) document.getElementById('reg-fav').classList.add('on');
+  if(item.photo) {
+    _pendingPhotoBase64=item.photo;
+    const p=document.getElementById('photo-preview');
+    p.innerHTML='<img src="'+item.photo+'" alt="プレビュー">';p.classList.add('has-photo');
+    document.getElementById('photo-extra-buttons').classList.add('show');
+    try{if(item.photo.startsWith('data:')){const bin=atob(item.photo.split(',')[1]);const buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);_pendingPhotoBlob=new Blob([buf],{type:'image/jpeg'});}}catch(e){_pendingPhotoBlob=null;}
   }
-
   switchScreen('register');
 }
-
 async function deleteClothing(id) {
   document.getElementById('detail-modal').classList.remove('show');
-  const ok = await showConfirm('このふくをさくじょする？');
-  if (!ok) return;
-  let clothes = loadClothes();
-  clothes = clothes.filter(c => c.id !== id);
-  saveClothesData(clothes);
-  renderClothesList();
-  showToast('さくじょしたよ');
+  const ok=await showConfirm('このふくをさくじょする？');if(!ok)return;
+  let clothes=loadClothes();clothes=clothes.filter(c=>c.id!==id);saveClothesData(clothes);
+  if(_supabase&&_familyCode){try{await _supabase.from('clothes').delete().eq('id',id);await _supabase.storage.from('clothes-photos').remove([_familyCode+'/'+id+'.jpg']);}catch(e){}}
+  renderClothesList();showToast('さくじょしたよ');
 }
 
-// ===== コーデ提案ロジック =====
+/* ================================================================
+   コーデ提案ロジック
+   ================================================================ */
 function generateProposals() {
-  const temp = parseInt(document.getElementById('input-temp').value) || 20;
-  const weather = document.getElementById('input-weather').value;
-  const whiteNg = document.querySelector('#check-white-ng input').checked;
-  const outdoor = document.querySelector('#check-outdoor input').checked;
+  const temp=parseInt(document.getElementById('input-temp').value)||20;
+  const weather=document.getElementById('input-weather').value;
+  const whiteNg=document.querySelector('#check-white-ng input').checked;
+  const outdoor=document.querySelector('#check-outdoor input').checked;
+  const clothes=loadClothes();
+  document.getElementById('propose-condition').textContent=temp+'℃ / '+WEATHER_NAMES[weather]+(whiteNg?' / しろNG':'')+(outdoor?' / そとあそび':'');
 
-  const clothes = loadClothes();
-  const history = loadHistory();
+  let available=clothes.filter(c=>!c.washing);
+  if(whiteNg) available=available.filter(c=>c.color!=='white'&&c.color!=='beige');
+  const cs=getCurrentSeason();
+  let tops=available.filter(c=>c.category==='tops'),bottoms=available.filter(c=>c.category==='bottoms'),outers=available.filter(c=>c.category==='outer');
+  const ft=tops.filter(c=>isSeasonMatch(c.season,cs)),fb=bottoms.filter(c=>isSeasonMatch(c.season,cs)),fo=outers.filter(c=>isSeasonMatch(c.season,cs));
+  if(ft.length>=3)tops=ft;if(fb.length>=3)bottoms=fb;if(fo.length>=1)outers=fo;
+  const needOuter=temp<20,today=new Date().toISOString().split('T')[0];
 
-  // 条件テキスト
-  const condText = `${temp}℃ / ${WEATHER_NAMES[weather]}${whiteNg ? ' / しろNG' : ''}${outdoor ? ' / そとあそび' : ''}`;
-  document.getElementById('propose-condition').textContent = condText;
-
-  // 利用可能な服を抽出（洗濯中を除外）
-  let available = clothes.filter(c => !c.washing);
-
-  // 白NG除外
-  if (whiteNg) {
-    available = available.filter(c => c.color !== 'white' && c.color !== 'beige');
+  function scoreItem(item){
+    let s=50;const mw=Math.max(...clothes.map(c=>c.wearCount),1);s+=(1-item.wearCount/mw)*20;
+    if(item.lastWorn){const d=daysBetween(item.lastWorn,today);if(d===0)s-=40;else if(d===1)s-=25;else if(d<=3)s-=10;else s+=Math.min(d*2,20);}else s+=15;
+    if(temp>=25&&item.season==='summer')s+=10;if(temp>=25&&item.season==='winter')s-=20;
+    if(temp<=10&&item.season==='winter')s+=10;if(temp<=10&&item.season==='summer')s-=20;
+    if(weather==='rainy'&&(item.color==='white'||item.color==='beige'))s-=10;
+    if(outdoor&&(item.color==='white'||item.color==='beige'))s-=15;
+    s+=Math.random()*10;return{...item,score:s};
   }
-
-  // 現在の季節を取得
-  const currentSeason = getCurrentSeason();
-
-  // カテゴリ別に分ける
-  let tops = available.filter(c => c.category === 'tops');
-  let bottoms = available.filter(c => c.category === 'bottoms');
-  let outers = available.filter(c => c.category === 'outer');
-
-  // 季節フィルタ（合わない季節の服を除外、ただし候補不足なら残す）
-  const seasonFilteredTops = tops.filter(c => isSeasonMatch(c.season, currentSeason));
-  const seasonFilteredBottoms = bottoms.filter(c => isSeasonMatch(c.season, currentSeason));
-  const seasonFilteredOuters = outers.filter(c => isSeasonMatch(c.season, currentSeason));
-
-  if (seasonFilteredTops.length >= 3) tops = seasonFilteredTops;
-  if (seasonFilteredBottoms.length >= 3) bottoms = seasonFilteredBottoms;
-  if (seasonFilteredOuters.length >= 1) outers = seasonFilteredOuters;
-
-  // アウター要否判断
-  const needOuter = temp < 20;
-  const mustOuter = temp < 10;
-
-  // 各カテゴリにスコアをつける
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = getDateStr(-1);
-
-  function scoreItem(item) {
-    let score = 50; // ベーススコア
-
-    // 着用回数が少ない→高スコア（偏り分散）
-    const maxWear = Math.max(...clothes.map(c => c.wearCount), 1);
-    score += (1 - item.wearCount / maxWear) * 20;
-
-    // 最終着用日が古い→高スコア
-    if (item.lastWorn) {
-      const daysSince = daysBetween(item.lastWorn, today);
-      if (daysSince === 0) score -= 40; // 今日着たら大幅減点
-      else if (daysSince === 1) score -= 25; // 昨日着たら減点
-      else if (daysSince <= 3) score -= 10;
-      else score += Math.min(daysSince * 2, 20);
-    } else {
-      score += 15; // まだ着てない→ボーナス
-    }
-
-    // 気温適合
-    if (temp >= 25 && item.season === 'summer') score += 10;
-    if (temp >= 25 && item.season === 'winter') score -= 20;
-    if (temp <= 10 && item.season === 'winter') score += 10;
-    if (temp <= 10 && item.season === 'summer') score -= 20;
-
-    // 雨の日は明るい色を少し控え（汚れやすい）
-    if (weather === 'rainy' && (item.color === 'white' || item.color === 'beige')) {
-      score -= 10;
-    }
-
-    // 外遊びで汚れやすい白系は下げる
-    if (outdoor && (item.color === 'white' || item.color === 'beige')) {
-      score -= 15;
-    }
-
-    // ランダム要素（毎回同じにならないよう）
-    score += Math.random() * 10;
-
-    return { ...item, score: score };
+  const st=tops.map(scoreItem).sort((a,b)=>b.score-a.score);
+  const sb=bottoms.map(scoreItem).sort((a,b)=>b.score-a.score);
+  const so=outers.map(scoreItem).sort((a,b)=>b.score-a.score);
+  const proposals=[],labels=[['いちばんおすすめ！','🌟'],['こっちもいいかも！','💡'],['こんなくみあわせは？','🎨']];
+  for(let i=0;i<3;i++){
+    const top=st[i]||null,bot=sb[i]||sb[0]||null,out=needOuter?(so[i]||so[0]||null):null;
+    if(!top&&!bot)continue;
+    let reasons=[];
+    if(top&&top.wearCount===0)reasons.push(top.name+'はまだきてないよ！');
+    else if(top&&top.lastWorn&&daysBetween(top.lastWorn,today)>7)reasons.push(top.name+'はしばらくきてないね');
+    if(temp>=25)reasons.push('あついからすずしく');else if(temp>=20)reasons.push('すごしやすいきおん');
+    else if(temp>=10)reasons.push('すこしひんやり');else reasons.push('さむい！あたたかくしよう');
+    if(weather==='rainy')reasons.push('あめのひ');if(whiteNg)reasons.push('しろNGのひ');
+    if(!out&&needOuter&&!outers.length)reasons.push('アウター未登録');
+    proposals.push({index:i,label:labels[i][0],icon:labels[i][1],tops:top,bottoms:bot,outer:out,reason:reasons.join(' ')});
   }
-
-  const scoredTops = tops.map(scoreItem).sort((a, b) => b.score - a.score);
-  const scoredBottoms = bottoms.map(scoreItem).sort((a, b) => b.score - a.score);
-  const scoredOuters = outers.map(scoreItem).sort((a, b) => b.score - a.score);
-
-  // 3案を生成
-  const proposals = [];
-  const reasonTemplates = [
-    ['いちばんおすすめ！', '🌟'],
-    ['こっちもいいかも！', '💡'],
-    ['こんなくみあわせは？', '🎨'],
-  ];
-
-  for (let i = 0; i < 3; i++) {
-    const top = scoredTops[i] || null;
-    const bottom = scoredBottoms[i] || scoredBottoms[0] || null;
-    const outer = (needOuter || mustOuter) ? (scoredOuters[i] || scoredOuters[0] || null) : null;
-
-    if (!top && !bottom) continue;
-
-    let reasons = [];
-    if (top && top.wearCount === 0) reasons.push(`${top.name}はまだきてないよ！`);
-    else if (top && top.lastWorn) {
-      const d = daysBetween(top.lastWorn, today);
-      if (d > 7) reasons.push(`${top.name}はしばらくきてないね`);
-    }
-    if (temp >= 25) reasons.push('あついから、すずしいふくがいいね');
-    else if (temp >= 20) reasons.push('すごしやすいきおんだね');
-    else if (temp >= 10) reasons.push('すこしひんやり、うわぎがあるといいかも');
-    else reasons.push('さむいから、あたたかくしよう！');
-
-    if (weather === 'rainy') reasons.push('あめだから、よごれにくいいろがいいよ');
-    if (whiteNg) reasons.push('きょうはしろNGのひ！');
-    if (!outer && needOuter && outers.length === 0) reasons.push('アウターがとうろくされてないよ');
-
-    proposals.push({
-      index: i,
-      label: reasonTemplates[i][0],
-      icon: reasonTemplates[i][1],
-      tops: top,
-      bottoms: bottom,
-      outer: outer,
-      reason: reasons.join(' '),
-    });
-  }
-
-  renderProposals(proposals, temp, weather, whiteNg, needOuter, outers.length === 0);
-  switchScreen('propose');
+  _currentProposals=proposals;
+  renderProposals(proposals,needOuter,!outers.length);switchScreen('propose');
 }
-
-function renderProposals(proposals, temp, weather, whiteNg, needOuter, noOuters) {
-  const container = document.getElementById('proposals-container');
-
-  if (proposals.length === 0) {
-    container.innerHTML = `<div class="no-proposal">
-      <div class="no-icon">🤔</div>
-      <p>ていあんできるふくがたりないよ</p>
-      <p style="font-size:12px; margin-top:6px;">トップスとボトムスをとうろくしてね</p>
-      <button class="btn btn-primary mt-12" onclick="switchScreen('register')">ふくをとうろく</button>
-    </div>`;
-    return;
-  }
-
-  const pClasses = ['p1', 'p2', 'p3'];
-  let html = '';
-  proposals.forEach((p, idx) => {
-    html += `<div class="proposal-card">
-      <div class="proposal-header ${pClasses[idx]}">${p.icon} ${p.label}</div>
-      <div class="proposal-items">`;
-
-    // トップス
-    html += renderProposalItem('トップス', p.tops);
-    // ボトムス
-    html += renderProposalItem('ボトムス', p.bottoms);
-    // アウター
-    if (needOuter) {
-      html += renderProposalItem('アウター', p.outer);
-    }
-
-    html += `</div>
-      <div class="proposal-reason">💬 ${escapeHtml(p.reason)}</div>
-      <div class="proposal-actions">
-        <button class="btn btn-sm btn-primary" onclick="adoptProposal(${idx})" style="width:100%;">
-          👍 これにする！
-        </button>
-      </div>
-    </div>`;
+function renderProposals(proposals,needOuter,noOuters){
+  const c=document.getElementById('proposals-container');
+  if(!proposals.length){c.innerHTML='<div class="no-proposal"><div class="no-icon">🤔</div><p>ていあんできるふくがたりないよ</p><button class="btn btn-primary mt-12" onclick="startNewRegistration()">ふくをとうろく</button></div>';return;}
+  const pc=['p1','p2','p3'];let h='';
+  proposals.forEach((p,i)=>{
+    h+='<div class="proposal-card"><div class="proposal-header '+pc[i]+'">'+p.icon+' '+p.label+'</div><div class="proposal-items">';
+    h+=rpItem('トップス',p.tops)+rpItem('ボトムス',p.bottoms);
+    if(needOuter) h+=rpItem('アウター',p.outer);
+    h+='</div><div class="proposal-reason">💬 '+escapeHtml(p.reason)+'</div><div class="proposal-actions"><button class="btn btn-sm btn-primary" onclick="adoptProposal('+i+')" style="width:100%;">👍 これにする！</button></div></div>';
   });
-
-  // 注意メッセージ
-  if (noOuters && needOuter) {
-    html += '<div style="text-align:center; color:var(--text-light); font-size:12px; margin-top:8px;">ℹ アウターがとうろくされていないため、アウターなしのていあんです</div>';
-  }
-
-  container.innerHTML = html;
-  // グローバルに保持（採用時に使う）
-  window._currentProposals = proposals;
+  if(noOuters&&needOuter) h+='<div style="text-align:center;color:var(--text-light);font-size:12px;margin-top:8px;">ℹ アウター未登録</div>';
+  c.innerHTML=h;
 }
-
-function renderProposalItem(catLabel, item) {
-  if (!item) {
-    return `<div class="proposal-item">
-      <div class="item-cat">${catLabel}</div>
-      <div class="item-photo"><span style="font-size:24px; line-height:1; display:flex; align-items:center; justify-content:center; height:100%;">—</span></div>
-      <div class="item-name">なし</div>
-    </div>`;
-  }
-  return `<div class="proposal-item">
-    <div class="item-cat">${catLabel}</div>
-    <div class="item-photo">
-      ${item.photo
-        ? `<img src="${item.photo}" alt="${item.name}">`
-        : `<span style="font-size:28px; line-height:1; display:flex; align-items:center; justify-content:center; height:100%;">${getCategoryEmoji(item.category)}</span>`}
-    </div>
-    <div class="item-name">${escapeHtml(item.name)}</div>
-  </div>`;
+function rpItem(cat,item){
+  if(!item) return '<div class="proposal-item"><div class="item-cat">'+cat+'</div><div class="item-photo"><span style="font-size:24px;display:flex;align-items:center;justify-content:center;height:100%;">—</span></div><div class="item-name">なし</div></div>';
+  return '<div class="proposal-item"><div class="item-cat">'+cat+'</div><div class="item-photo">'+(item.photo?'<img src="'+item.photo+'">':'<span style="font-size:28px;display:flex;align-items:center;justify-content:center;height:100%;">'+getCategoryEmoji(item.category)+'</span>')+'</div><div class="item-name">'+escapeHtml(item.name)+'</div></div>';
 }
-
-// ===== 提案を採用（着用記録） =====
-async function adoptProposal(idx) {
-  const proposals = window._currentProposals;
-  if (!proposals || !proposals[idx]) return;
-  const p = proposals[idx];
-
-  const ok = await showConfirm('このコーデにきめる？');
-  if (!ok) return;
-
-  const today = new Date().toISOString().split('T')[0];
-  const clothes = loadClothes();
-  const history = loadHistory();
-
-  // 着用記録を追加
-  const record = {
-    date: today,
-    tops: p.tops ? p.tops.id : null,
-    bottoms: p.bottoms ? p.bottoms.id : null,
-    outer: p.outer ? p.outer.id : null,
-  };
-
-  // 同日の既存記録をチェック
-  const existIdx = history.findIndex(h => h.date === today);
-  if (existIdx >= 0) {
-    history[existIdx] = record;
-  } else {
-    history.unshift(record);
-  }
+async function adoptProposal(idx){
+  if(!_currentProposals[idx])return;const p=_currentProposals[idx];
+  const ok=await showConfirm('このコーデにきめる？');if(!ok)return;
+  const today=new Date().toISOString().split('T')[0],clothes=loadClothes(),history=loadHistory();
+  const rec={date:today,tops:p.tops?p.tops.id:null,bottoms:p.bottoms?p.bottoms.id:null,outer:p.outer?p.outer.id:null};
+  const ei=history.findIndex(h=>h.date===today);
+  if(ei>=0)history[ei]=rec;else history.unshift(rec);
   saveHistoryData(history);
-
-  // 服のwearCountとlastWornを更新
-  [p.tops, p.bottoms, p.outer].forEach(item => {
-    if (!item) return;
-    const ci = clothes.findIndex(c => c.id === item.id);
-    if (ci >= 0) {
-      clothes[ci].wearCount = (clothes[ci].wearCount || 0) + 1;
-      clothes[ci].lastWorn = today;
-    }
-  });
+  [p.tops,p.bottoms,p.outer].forEach(item=>{if(!item)return;const ci=clothes.findIndex(c=>c.id===item.id);if(ci>=0){clothes[ci].wearCount=(clothes[ci].wearCount||0)+1;clothes[ci].lastWorn=today;}});
   saveClothesData(clothes);
-
-  showToast('きょうのコーデをきめたよ！🎉');
-  switchScreen('home');
+  if(_supabase&&_familyCode){try{
+    await _supabase.from('wear_history').upsert({id:today+'_'+_familyCode,family_code:_familyCode,wear_date:today,tops_id:rec.tops,bottoms_id:rec.bottoms,outer_id:rec.outer},{onConflict:'id'});
+    for(const it of[p.tops,p.bottoms,p.outer]){if(it)await upsertClothesToCloud(clothes.find(c=>c.id===it.id));}
+  }catch(e){console.warn(e);}}
+  showToast('きょうのコーデをきめたよ！🎉');switchScreen('home');
 }
 
-// ===== 着用履歴表示 =====
-function renderHistory() {
-  const container = document.getElementById('history-container');
-  const emptyEl = document.getElementById('history-empty');
-  const history = loadHistory();
-  const clothes = loadClothes();
-
-  if (history.length === 0) {
-    container.innerHTML = '';
-    emptyEl.style.display = 'block';
-    return;
-  }
-  emptyEl.style.display = 'none';
-
-  let html = '';
-  let prevItems = {}; // 前日の服IDを記録（連続着用チェック）
-
-  history.forEach((rec, i) => {
-    const dateStr = formatDate(rec.date);
-    const isToday = rec.date === new Date().toISOString().split('T')[0];
-    html += `<div class="history-date">${isToday ? '📌' : '📅'} ${dateStr}${isToday ? '（きょう）' : ''}</div>`;
-    html += '<div class="history-card"><div class="history-items">';
-
-    const currentItems = {};
-    ['tops', 'bottoms', 'outer'].forEach(cat => {
-      const id = rec[cat];
-      if (!id) return;
-      currentItems[cat] = id;
-      const item = clothes.find(c => c.id === id);
-      if (!item) {
-        html += `<div class="history-item"><div class="h-photo"><div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-light);">？</div></div><div class="h-name">さくじょずみ</div></div>`;
-        return;
-      }
-      html += `<div class="history-item">
-        <div class="h-photo">
-          ${item.photo ? `<img src="${item.photo}">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">${getCategoryEmoji(item.category)}</div>`}
-        </div>
-        <div class="h-name">${escapeHtml(item.name)}</div>
-      </div>`;
+/* ================================================================
+   着用履歴
+   ================================================================ */
+function renderHistory(){
+  const c=document.getElementById('history-container'),em=document.getElementById('history-empty'),history=loadHistory(),clothes=loadClothes();
+  if(!history.length){c.innerHTML='';em.style.display='block';return;}em.style.display='none';let h='';
+  history.forEach((rec,i)=>{
+    const isToday=rec.date===new Date().toISOString().split('T')[0];
+    h+='<div class="history-date">'+(isToday?'📌':'📅')+' '+formatDate(rec.date)+(isToday?' （きょう）':'')+'</div><div class="history-card"><div class="history-items">';
+    ['tops','bottoms','outer'].forEach(cat=>{
+      const id=rec[cat];if(!id)return;const item=clothes.find(c=>c.id===id);
+      if(!item){h+='<div class="history-item"><div class="h-photo"><div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-light);">？</div></div><div class="h-name">さくじょずみ</div></div>';return;}
+      h+='<div class="history-item"><div class="h-photo">'+(item.photo?'<img src="'+item.photo+'">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">'+getCategoryEmoji(item.category)+'</div>')+'</div><div class="h-name">'+escapeHtml(item.name)+'</div></div>';
     });
-
-    html += '</div>';
-
-    // 連続着用チェック（前の記録と比較）
-    if (i > 0) {
-      const prevRec = history[i - 1];
-      const consecutive = [];
-      ['tops', 'bottoms', 'outer'].forEach(cat => {
-        if (rec[cat] && prevRec[cat] && rec[cat] === prevRec[cat]) {
-          const item = clothes.find(c => c.id === rec[cat]);
-          if (item) consecutive.push(item.name);
-        }
-      });
-      if (consecutive.length > 0) {
-        html += `<div class="consecutive-warn">⚠ れんぞくちゃくよう: ${consecutive.map(n => escapeHtml(n)).join('、')}</div>`;
-      }
-    }
-
-    html += '</div>';
+    h+='</div>';
+    if(i>0){const pr=history[i-1];const cons=[];['tops','bottoms','outer'].forEach(cat=>{if(rec[cat]&&pr[cat]&&rec[cat]===pr[cat]){const it=clothes.find(c=>c.id===rec[cat]);if(it)cons.push(it.name);}});if(cons.length)h+='<div class="consecutive-warn">⚠ れんぞく: '+cons.map(n=>escapeHtml(n)).join('、')+'</div>';}
+    h+='</div>';
   });
-
-  container.innerHTML = html;
+  c.innerHTML=h;
 }
 
-// ===== サンプルデータ投入 =====
-async function showSampleDialog() {
-  const ok = await showConfirm('サンプルデータをついかする？\n（いまあるデータはのこるよ）');
-  if (!ok) return;
-  insertSampleData();
-}
-
-function insertSampleData() {
-  const clothes = loadClothes();
-  const samples = [
-    // トップス
-    { name: 'ピンクのTシャツ', category: 'tops', color: 'pink', season: 'summer', washing: false, fav: true, wearCount: 3, lastWorn: getDateStr(-3) },
-    { name: 'しろいブラウス', category: 'tops', color: 'white', season: 'all', washing: false, fav: false, wearCount: 5, lastWorn: getDateStr(-1) },
-    { name: 'ボーダーロンT', category: 'tops', color: 'navy', season: 'spring', washing: true, fav: false, wearCount: 4, lastWorn: getDateStr(-5) },
-    { name: 'きいろいパーカー', category: 'tops', color: 'yellow', season: 'autumn', washing: false, fav: true, wearCount: 2, lastWorn: getDateStr(-7) },
-    { name: 'みどりのポロシャツ', category: 'tops', color: 'green', season: 'summer', washing: false, fav: false, wearCount: 1, lastWorn: getDateStr(-10) },
-    { name: 'キャラTシャツ（ネコ）', category: 'tops', color: 'blue', season: 'summer', washing: false, fav: true, wearCount: 6, lastWorn: getDateStr(-2) },
-    { name: 'あかいフリース', category: 'tops', color: 'red', season: 'winter', washing: false, fav: false, wearCount: 0, lastWorn: null },
-    { name: 'むらさきのセーター', category: 'tops', color: 'purple', season: 'winter', washing: false, fav: false, wearCount: 1, lastWorn: getDateStr(-14) },
-    // ボトムス
-    { name: 'デニムパンツ', category: 'bottoms', color: 'blue', season: 'all', washing: false, fav: true, wearCount: 8, lastWorn: getDateStr(-1) },
-    { name: 'ピンクのスカート', category: 'bottoms', color: 'pink', season: 'spring', washing: false, fav: true, wearCount: 3, lastWorn: getDateStr(-4) },
-    { name: 'くろいレギンス', category: 'bottoms', color: 'black', season: 'all', washing: false, fav: false, wearCount: 5, lastWorn: getDateStr(-2) },
-    { name: 'チェックのスカート', category: 'bottoms', color: 'red', season: 'autumn', washing: true, fav: false, wearCount: 2, lastWorn: getDateStr(-8) },
-    { name: 'ベージュのハーフパンツ', category: 'bottoms', color: 'beige', season: 'summer', washing: false, fav: false, wearCount: 1, lastWorn: getDateStr(-12) },
-    { name: 'グレーのスウェット', category: 'bottoms', color: 'gray', season: 'winter', washing: false, fav: false, wearCount: 3, lastWorn: getDateStr(-6) },
-    // アウター
-    { name: 'きいろいレインコート', category: 'outer', color: 'yellow', season: 'all', washing: false, fav: false, wearCount: 2, lastWorn: getDateStr(-10) },
-    { name: 'ネイビーのダウン', category: 'outer', color: 'navy', season: 'winter', washing: false, fav: true, wearCount: 4, lastWorn: getDateStr(-3) },
-    { name: 'ピンクのカーディガン', category: 'outer', color: 'pink', season: 'spring', washing: false, fav: true, wearCount: 1, lastWorn: getDateStr(-15) },
-    { name: 'ちゃいろのジャケット', category: 'outer', color: 'brown', season: 'autumn', washing: false, fav: false, wearCount: 0, lastWorn: null },
+/* ================================================================
+   サンプルデータ
+   ================================================================ */
+async function showSampleDialog(){const ok=await showConfirm('サンプルデータをついかする？');if(!ok)return;insertSampleData();}
+function insertSampleData(){
+  const clothes=loadClothes();
+  const S=[
+    {name:'ピンクのTシャツ',category:'tops',color:'pink',season:'summer',washing:false,fav:true,wearCount:3,lastWorn:getDateStr(-3)},
+    {name:'しろいブラウス',category:'tops',color:'white',season:'all',washing:false,fav:false,wearCount:5,lastWorn:getDateStr(-1)},
+    {name:'ボーダーロンT',category:'tops',color:'navy',season:'spring',washing:true,fav:false,wearCount:4,lastWorn:getDateStr(-5)},
+    {name:'きいろいパーカー',category:'tops',color:'yellow',season:'autumn',washing:false,fav:true,wearCount:2,lastWorn:getDateStr(-7)},
+    {name:'みどりのポロシャツ',category:'tops',color:'green',season:'summer',washing:false,fav:false,wearCount:1,lastWorn:getDateStr(-10)},
+    {name:'キャラTシャツ（ネコ）',category:'tops',color:'blue',season:'summer',washing:false,fav:true,wearCount:6,lastWorn:getDateStr(-2)},
+    {name:'あかいフリース',category:'tops',color:'red',season:'winter',washing:false,fav:false,wearCount:0,lastWorn:null},
+    {name:'むらさきのセーター',category:'tops',color:'purple',season:'winter',washing:false,fav:false,wearCount:1,lastWorn:getDateStr(-14)},
+    {name:'デニムパンツ',category:'bottoms',color:'blue',season:'all',washing:false,fav:true,wearCount:8,lastWorn:getDateStr(-1)},
+    {name:'ピンクのスカート',category:'bottoms',color:'pink',season:'spring',washing:false,fav:true,wearCount:3,lastWorn:getDateStr(-4)},
+    {name:'くろいレギンス',category:'bottoms',color:'black',season:'all',washing:false,fav:false,wearCount:5,lastWorn:getDateStr(-2)},
+    {name:'チェックのスカート',category:'bottoms',color:'red',season:'autumn',washing:true,fav:false,wearCount:2,lastWorn:getDateStr(-8)},
+    {name:'ベージュのハーフパンツ',category:'bottoms',color:'beige',season:'summer',washing:false,fav:false,wearCount:1,lastWorn:getDateStr(-12)},
+    {name:'グレーのスウェット',category:'bottoms',color:'gray',season:'winter',washing:false,fav:false,wearCount:3,lastWorn:getDateStr(-6)},
+    {name:'きいろいレインコート',category:'outer',color:'yellow',season:'all',washing:false,fav:false,wearCount:2,lastWorn:getDateStr(-10)},
+    {name:'ネイビーのダウン',category:'outer',color:'navy',season:'winter',washing:false,fav:true,wearCount:4,lastWorn:getDateStr(-3)},
+    {name:'ピンクのカーディガン',category:'outer',color:'pink',season:'spring',washing:false,fav:true,wearCount:1,lastWorn:getDateStr(-15)},
+    {name:'ちゃいろのジャケット',category:'outer',color:'brown',season:'autumn',washing:false,fav:false,wearCount:0,lastWorn:null},
   ];
-
-  samples.forEach(s => {
-    clothes.push({
-      id: generateId(),
-      name: s.name,
-      category: s.category,
-      color: s.color,
-      season: s.season,
-      washing: s.washing,
-      fav: s.fav,
-      photo: '',
-      wearCount: s.wearCount,
-      lastWorn: s.lastWorn,
-      createdAt: new Date().toISOString(),
-    });
-  });
+  const ids=[];
+  S.forEach(s=>{const id=generateId();ids.push(id);clothes.push({id,name:s.name,category:s.category,color:s.color,season:s.season,washing:s.washing,fav:s.fav,photo:'',wearCount:s.wearCount,lastWorn:s.lastWorn,createdAt:new Date().toISOString()});});
   saveClothesData(clothes);
-
-  // サンプル履歴も追加
-  const history = loadHistory();
-  const sampleHistory = [
-    { date: getDateStr(-1), tops: clothes[clothes.length - 17].id, bottoms: clothes[clothes.length - 10].id, outer: null },
-    { date: getDateStr(-2), tops: clothes[clothes.length - 13].id, bottoms: clothes[clothes.length - 8].id, outer: null },
-    { date: getDateStr(-3), tops: clothes[clothes.length - 18].id, bottoms: clothes[clothes.length - 9].id, outer: clothes[clothes.length - 3].id },
-  ];
-  sampleHistory.forEach(sh => {
-    if (!history.find(h => h.date === sh.date)) {
-      history.unshift(sh);
-    }
-  });
-  // 日付順ソート
-  history.sort((a, b) => b.date.localeCompare(a.date));
-  saveHistoryData(history);
-
-  showToast('サンプルデータをついかしたよ！');
-  refreshHome();
+  const history=loadHistory();
+  [{date:getDateStr(-1),tops:ids[1],bottoms:ids[8],outer:null},{date:getDateStr(-2),tops:ids[5],bottoms:ids[10],outer:null},{date:getDateStr(-3),tops:ids[0],bottoms:ids[9],outer:ids[15]}].forEach(r=>{if(!history.find(h=>h.date===r.date))history.unshift(r);});
+  history.sort((a,b)=>b.date.localeCompare(a.date));saveHistoryData(history);
+  showToast('✅ サンプルついか！');refreshHome();
+}
+async function clearAllData(){
+  const ok=await showConfirm('すべてのデータをさくじょします。\nもとにもどせません。');if(!ok)return;
+  localStorage.removeItem(STORAGE_CLOTHES);localStorage.removeItem(STORAGE_HISTORY);
+  showToast('🗑 さくじょしました');refreshHome();
 }
 
-// ===== ユーティリティ =====
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+/* ================================================================
+   ユーティリティ
+   ================================================================ */
+function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function formatDate(ds){if(!ds)return'';try{const d=new Date(ds+'T00:00:00');return(d.getMonth()+1)+'/'+d.getDate()+'（'+['日','月','火','水','木','金','土'][d.getDay()]+'）';}catch{return ds;}}
+function getDateStr(o){const d=new Date();d.setDate(d.getDate()+o);return d.toISOString().split('T')[0];}
+function daysBetween(a,b){return Math.floor(Math.abs(new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+function getCurrentSeason(){const m=new Date().getMonth()+1;if(m>=3&&m<=5)return'spring';if(m>=6&&m<=8)return'summer';if(m>=9&&m<=11)return'autumn';return'winter';}
+function isSeasonMatch(s,c){if(s==='all')return true;if(s===c)return true;const a={spring:['summer','winter'],summer:['spring','autumn'],autumn:['summer','winter'],winter:['autumn','spring']};return a[c]&&a[c].includes(s);}
+function getCategoryEmoji(c){return{tops:'👕',bottoms:'👖',outer:'🧥'}[c]||'👗';}
+function generateId(){return'c_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr + 'T00:00:00');
-    const m = d.getMonth() + 1;
-    const day = d.getDate();
-    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-    const w = weekdays[d.getDay()];
-    return `${m}/${day}（${w}）`;
-  } catch {
-    return dateStr;
-  }
-}
-
-function getDateStr(offsetDays) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().split('T')[0];
-}
-
-function daysBetween(dateStr1, dateStr2) {
-  const d1 = new Date(dateStr1 + 'T00:00:00');
-  const d2 = new Date(dateStr2 + 'T00:00:00');
-  return Math.floor(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
-}
-
-function getCurrentSeason() {
-  const m = new Date().getMonth() + 1;
-  if (m >= 3 && m <= 5) return 'spring';
-  if (m >= 6 && m <= 8) return 'summer';
-  if (m >= 9 && m <= 11) return 'autumn';
-  return 'winter';
-}
-
-function isSeasonMatch(itemSeason, currentSeason) {
-  if (itemSeason === 'all') return true;
-  if (itemSeason === currentSeason) return true;
-  // 隣の季節も許容
-  const adjacent = {
-    spring: ['summer', 'winter'],
-    summer: ['spring', 'autumn'],
-    autumn: ['summer', 'winter'],
-    winter: ['autumn', 'spring'],
-  };
-  return adjacent[currentSeason] && adjacent[currentSeason].includes(itemSeason);
-}
-
-// ===== 初期化 =====
-function init() {
-  initColorOptions();
-  refreshHome();
-}
-
-document.addEventListener('DOMContentLoaded', init);
+/* ===== 初期化 ===== */
+document.addEventListener('DOMContentLoaded',function(){initColorOptions();refreshHome();autoConnectSupabase();});
 </script>
 
 </body>
