@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="color-scheme" content="light">
+<title>リンのコーデアプリ</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #FFF8F0;
+  --card: #FFFFFF;
+  --primary: #FF8FAB;
+  --primary-dark: #E5758F;
+  --secondary: #A8D8EA;
+  --accent: #FFD166;
+  --accent2: #B8E6C8;
+  --text: #3D3D3D;
+  --text-light: #777777;
+  --danger: #FF6B6B;
+  --border: #F0E6DC;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --radius: 16px;
+  --nav-h: 64px;
+  --header-h: 52px;
+  --success: #4CAF50;
+}
+html, body, input, select, textarea, button {
+  color-scheme: light;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  background: var(--bg);
+  color: var(--text);
+}
+body {
+  font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--nav-h) + 16px);
+  padding-top: var(--header-h);
+  overflow-x: hidden;
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  color: inherit;
+}
+input, select, textarea {
+  font-family: inherit;
+  font-size: 16px;
+  background: #FEFCFA;
+  color: var(--text);
+}
+input::placeholder, textarea::placeholder {
+  color: #777;
+}
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--header-h);
+  background: linear-gradient(135deg, var(--primary), #FFB3C6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(255,143,171,0.3);
+}
+.header-left {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 4px;
+}
+.header-left button, .header-right button {
+  background: rgba(255,255,255,0.28);
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.header-right {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 4px;
+}
+.sync-indicator {
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+.sync-indicator.online {
+  background: rgba(76,175,80,0.55);
+}
+.sync-indicator.offline {
+  background: rgba(255,107,107,0.55);
+}
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--nav-h);
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  color: var(--text-light);
+  font-size: 10px;
+  padding: 6px 0;
+  transition: color .2s;
+}
+.nav-btn.active {
+  color: var(--primary);
+}
+.nav-btn .nav-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+.screen {
+  display: none;
+  padding: 12px 12px 20px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.screen.active {
+  display: block;
+}
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: transform .1s, box-shadow .2s, opacity .2s;
+  min-height: 48px;
+}
+.btn:active {
+  transform: scale(0.96);
+}
+.btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), #FFB3C6);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(255,143,171,0.3);
+  width: 100%;
+}
+.btn-secondary { background: var(--secondary); color: var(--text); }
+.btn-accent { background: var(--accent); color: var(--text); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 13px;
+  min-height: 36px;
+  border-radius: 10px;
+}
+.btn-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+.form-label .required {
+  color: var(--danger);
+  font-size: 11px;
+  margin-left: 4px;
+}
+.form-input, .form-select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: #FEFCFA;
+  color: var(--text);
+  font-size: 16px;
+  transition: border-color .2s;
+  -webkit-text-fill-color: var(--text);
+}
+.form-select option {
+  background: #ffffff;
+  color: var(--text);
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.form-error {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 4px;
+  display: none;
+}
+.form-error.show { display: block; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 2px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  transition: all .2s;
+}
+.chip.active {
+  border-color: var(--primary);
+  background: #FFF0F3;
+  color: var(--primary-dark);
+}
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.photo-upload-area { margin-bottom: 14px; }
+.photo-preview {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 14px;
+  border: 3px dashed var(--border);
+  overflow: hidden;
+  background: #FEFCFA;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-light);
+  font-size: 14px;
+}
+.photo-preview.has-photo {
+  border-style: solid;
+  border-color: var(--accent2);
+}
+.photo-preview img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-preview .placeholder-icon { font-size: 36px; }
+.photo-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.photo-buttons .btn {
+  font-size: 14px;
+  padding: 10px 8px;
+}
+.photo-extra-buttons {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.photo-extra-buttons.show { display: grid; }
+.hidden-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.analyze-status {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.analyze-status.analyzing {
+  display: flex;
+  background: #EDE7F6;
+  color: #5E35B1;
+}
+.analyze-status.done {
+  display: flex;
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+.analyze-status.fail {
+  display: flex;
+  background: #FFF3E0;
+  color: #E65100;
+}
+.greeting { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.greeting-sub { font-size: 13px; color: var(--text-light); margin-bottom: 16px; }
+.weather-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.weather-status {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-light);
+  background: #FFF5E5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+/* 今日/明日切替タブ */
+.day-toggle { display:flex; gap:0; margin-bottom:10px; border-radius:10px; overflow:hidden; border:2px solid var(--primary); }
+.day-toggle-btn { flex:1; padding:8px 0; text-align:center; font-size:14px; font-weight:600; background:var(--card); color:var(--primary); transition:all .2s; }
+.day-toggle-btn.active { background:var(--primary); color:#fff; }
+.condition-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.condition-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 2px solid var(--border);
+  background: var(--card);
+  transition: all .2s;
+}
+.condition-check.active {
+  border-color: var(--danger);
+  background: #FFF0F0;
+}
+.condition-check input { display: none; }
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.stat-card {
+  text-align: center;
+  padding: 10px 6px;
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.stat-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.stat-label {
+  font-size: 10px;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+.proposal-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.proposal-header {
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.proposal-header.p1 { background: linear-gradient(135deg, #FFE0E6, #FFF0F3); }
+.proposal-header.p2 { background: linear-gradient(135deg, #E0F0FF, #F0F8FF); }
+.proposal-header.p3 { background: linear-gradient(135deg, #E8FFE8, #F0FFF0); }
+.proposal-items {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  justify-content: center;
+}
+.proposal-item {
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+  max-width: 140px;
+}
+.proposal-item .item-cat {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-bottom: 4px;
+}
+.proposal-item .item-photo {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #F5E6FF, #E3F2FD);
+  margin-bottom: 4px;
+}
+.proposal-item .item-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.proposal-item .item-name {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.proposal-reason {
+  padding: 8px 16px 6px;
+  font-size: 12px;
+  color: var(--text-light);
+  border-top: 1px solid var(--border);
+  line-height: 1.4;
+}
+.proposal-actions {
+  padding: 8px 16px 14px;
+}
+.no-proposal {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-light);
+}
+.no-proposal .no-icon { font-size: 48px; margin-bottom: 8px; }
+.filter-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 10px;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+.clothes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.clothes-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .15s;
+  position: relative;
+}
+.clothes-card:active { transform: scale(0.97); }
+.clothes-card .card-photo {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: linear-gradient(135deg, #F5E6FF, #E3F2FD);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.clothes-card .card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.clothes-card .card-badges {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.clothes-card .card-info { padding: 8px 10px; }
+.clothes-card .card-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.clothes-card .card-meta { font-size: 10px; color: var(--text-light); }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.5);
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-content {
+  background: var(--card);
+  color: var(--text);
+  width: 100%;
+  max-width: 480px;
+  border-radius: 20px 20px 0 0;
+  padding: 20px 16px 32px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  animation: slideUp .25s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  margin: 0 auto 16px;
+}
+.modal-photo {
+  width: 100%;
+  max-height: 280px;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, #F5E6FF, #E3F2FD);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-photo img { width: 100%; height: 100%; object-fit: cover; }
+.modal-name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.modal-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.detail-item { font-size: 13px; }
+.detail-label { color: var(--text-light); font-size: 11px; }
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.history-date {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 12px 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.history-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.history-items {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.history-item {
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+  max-width: 120px;
+}
+.history-item .h-photo {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #F5E6FF, #E3F2FD);
+  margin-bottom: 4px;
+}
+.history-item .h-photo img { width: 100%; height: 100%; object-fit: cover; }
+.history-item .h-name { font-size: 11px; }
+.consecutive-warn {
+  background: #FFF3E0;
+  color: #E65100;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.settings-note {
+  font-size: 12px;
+  color: var(--text-light);
+  line-height: 1.5;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #FFF5E5;
+  border-radius: 8px;
+}
+.settings-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.settings-status.connected { background: #E8F5E9; color: #2E7D32; }
+.settings-status.disconnected { background: #FFF3E0; color: #E65100; }
+.save-status {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.save-status.saving { display: flex; background: #E3F2FD; color: #1565C0; }
+.save-status.success { display: flex; background: #E8F5E9; color: #2E7D32; }
+.save-status.error { display: flex; background: #FFEBEE; color: #C62828; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+.toast {
+  position: fixed;
+  bottom: calc(var(--nav-h) + 20px);
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--text);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 300;
+  opacity: 0;
+  transition: all .3s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  white-space: nowrap;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.confirm-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: rgba(0,0,0,0.5);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.confirm-overlay.show { display: flex; }
+.confirm-box {
+  background: var(--card);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 320px;
+  width: 100%;
+  text-align: center;
+}
+.confirm-msg {
+  font-size: 15px;
+  margin-bottom: 18px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+.confirm-btns { display: flex; gap: 10px; }
+.confirm-btns .btn { flex: 1; }
+.color-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.color-opt {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: border-color .2s, transform .1s;
+}
+.color-opt.active {
+  border-color: var(--primary);
+  transform: scale(1.15);
+}
+.toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+.toggle {
+  width: 50px;
+  height: 28px;
+  border-radius: 14px;
+  background: #DDD;
+  position: relative;
+  cursor: pointer;
+  transition: background .2s;
+}
+.toggle.on { background: var(--primary); }
+.toggle .toggle-knob {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left .2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.toggle.on .toggle-knob { left: 24px; }
+.toggle-label { font-size: 14px; }
+.mb-8 { margin-bottom: 8px; }
+.mt-12 { margin-top: 12px; }
+.text-center { text-align: center; }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="header-left">
+    <span class="sync-indicator offline" id="sync-indicator"><span id="sync-icon">💾</span><span id="sync-text">ローカル</span></span>
+  </div>
+  <span>👗 リンのコーデ</span>
+  <div class="header-right"><button onclick="showSampleDialog()">サンプル</button><button onclick="switchScreen('settings')">⚙</button></div>
+</header>
+
+<div id="screen-home" class="screen active">
+  <p class="greeting" id="greeting-text">おはよう、リン！</p>
+  <p class="greeting-sub" id="greeting-sub">あしたはなにをきようかな？</p>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" id="stat-total">0</div><div class="stat-label">ぜんぶのふく</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-available">0</div><div class="stat-label">きられるふく</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-history">0</div><div class="stat-label">きたかいすう</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title" id="weather-card-title">🌤 あしたのてんき</div>
+    <!-- 今日/明日切替 -->
+    <div class="day-toggle" id="day-toggle">
+      <button class="day-toggle-btn" data-day="0" onclick="selectWeatherDay(0)">☀ きょう</button>
+      <button class="day-toggle-btn active" data-day="1" onclick="selectWeatherDay(1)">🌙 あした</button>
+    </div>
+    <div class="weather-status" id="weather-status">あしたのてんきをじどうでしらべます…</div>
+    <div class="weather-grid">
+      <div><div class="form-label">きおん（℃）</div><input type="number" class="form-input" id="input-temp" value="20" min="-10" max="45" step="1"></div>
+      <div><div class="form-label">てんき</div><select class="form-select" id="input-weather"><option value="sunny">☀ はれ</option><option value="cloudy">☁ くもり</option><option value="rainy">🌧 あめ</option><option value="snowy">❄ ゆき</option></select></div>
+    </div>
+    <button class="btn btn-sm btn-secondary" type="button" onclick="fetchWeather(_selectedDayOffset)" style="width:100%; margin-bottom:10px;">📍 てんきをこうしん</button>
+    <div class="form-label">じょうけん</div>
+    <div class="condition-checks">
+      <label class="condition-check" id="check-white-ng"><input type="checkbox" onchange="this.parentElement.classList.toggle('active',this.checked)">🚫 しろNG</label>
+      <label class="condition-check" id="check-outdoor"><input type="checkbox" onchange="this.parentElement.classList.toggle('active',this.checked)">🏃 そとあそび</label>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="generateProposals()" style="margin-bottom:12px;">✨ コーデをかんがえる！</button>
+  <div class="card"><div class="card-title">📅 さいきんきたふく</div><div id="recent-history"></div></div>
+</div>
+
+<div id="screen-propose" class="screen">
+  <h2 style="font-size:18px; margin-bottom:4px;">✨ コーデていあん</h2>
+  <p style="font-size:12px; color:var(--text-light); margin-bottom:12px;" id="propose-condition"></p>
+  <div id="proposals-container"></div>
+</div>
+
+<div id="screen-list" class="screen">
+  <h2 style="font-size:18px; margin-bottom:10px;">👚 おようふくリスト</h2>
+  <div class="filter-bar" id="filter-bar">
+    <button class="chip active" data-filter="all" onclick="filterClothes('all',this)">すべて</button>
+    <button class="chip" data-filter="tops" onclick="filterClothes('tops',this)">トップス</button>
+    <button class="chip" data-filter="bottoms" onclick="filterClothes('bottoms',this)">ボトムス</button>
+    <button class="chip" data-filter="onepiece" onclick="filterClothes('onepiece',this)">ワンピース</button>
+    <button class="chip" data-filter="outer" onclick="filterClothes('outer',this)">アウター</button>
+    <button class="chip" data-filter="washing" onclick="filterClothes('washing',this)">🫧 せんたく中</button>
+    <button class="chip" data-filter="fav" onclick="filterClothes('fav',this)">⭐ おきにいり</button>
+  </div>
+  <div class="clothes-grid" id="clothes-grid"></div>
+  <div class="text-center mt-12"><button class="btn btn-outline" onclick="startNewRegistration()">＋ ふくをとうろく</button></div>
+</div>
+
+<div id="screen-register" class="screen">
+  <h2 style="font-size:18px; margin-bottom:10px;" id="register-title">👕 ふくをとうろく</h2>
+  <div class="save-status" id="save-status"><span id="save-status-icon"></span><span id="save-status-text"></span></div>
+  <div class="card">
+    <div class="photo-upload-area">
+      <div class="form-label">しゃしん</div>
+      <div class="photo-preview" id="photo-preview"><span class="placeholder-icon">📸</span><span>したのボタンからしゃしんをえらんでね</span></div>
+      <input type="file" accept="image/*" capture="environment" id="photo-input-camera" class="hidden-input" onchange="handlePhotoSelect(event)">
+      <input type="file" accept="image/*" id="photo-input-gallery" class="hidden-input" onchange="handlePhotoSelect(event)">
+      <div class="photo-buttons">
+        <button class="btn btn-sm btn-secondary" type="button" onclick="document.getElementById('photo-input-camera').click()">📷 カメラ</button>
+        <button class="btn btn-sm btn-accent" type="button" onclick="document.getElementById('photo-input-gallery').click()">🖼 アルバム</button>
+      </div>
+      <div class="photo-extra-buttons" id="photo-extra-buttons">
+        <button class="btn btn-sm btn-success" type="button" onclick="downloadCurrentPhoto()">📥 たんまつにほぞん</button>
+        <button class="btn btn-sm btn-outline" type="button" onclick="clearPhoto()">✕ しゃしんをけす</button>
+      </div>
+      <div class="analyze-status" id="analyze-status"><span id="analyze-status-icon"></span><span id="analyze-status-text"></span></div>
+    </div>
+    <div class="form-group"><label class="form-label">なまえ<span class="required">*ひっす</span></label><input type="text" class="form-input" id="reg-name" placeholder="たとえば：ピンクのTシャツ" maxlength="30"><div class="form-error" id="err-name">なまえをいれてね</div></div>
+    <div class="form-group"><label class="form-label">カテゴリ<span class="required">*ひっす</span></label><select class="form-select" id="reg-category"><option value="">えらんでね</option><option value="tops">トップス</option><option value="bottoms">ボトムス</option><option value="onepiece">ワンピース</option><option value="outer">アウター</option></select><div class="form-error" id="err-category">カテゴリをえらんでね</div></div>
+    <div class="form-group"><label class="form-label">いろ<span class="required">*ひっす</span></label><div class="color-options" id="color-options"></div><div class="form-error" id="err-color">いろをえらんでね</div></div>
+    <div class="form-group"><label class="form-label">きせつ（ふくすうOK）</label>
+      <div class="chip-group" id="season-chips">
+        <button type="button" class="chip active" data-season="all" onclick="toggleSeasonChip(this)">オールシーズン</button>
+        <button type="button" class="chip" data-season="spring" onclick="toggleSeasonChip(this)">🌸 はる</button>
+        <button type="button" class="chip" data-season="summer" onclick="toggleSeasonChip(this)">🌻 なつ</button>
+        <button type="button" class="chip" data-season="autumn" onclick="toggleSeasonChip(this)">🍁 あき</button>
+        <button type="button" class="chip" data-season="winter" onclick="toggleSeasonChip(this)">⛄ ふゆ</button>
+      </div>
+    </div>
+    <!-- 袖の長さ -->
+    <div class="form-group" id="sleeve-group">
+      <label class="form-label">そでのながさ</label>
+      <div class="chip-group" id="sleeve-chips">
+        <button type="button" class="chip active" data-sleeve="" onclick="selectSleeve(this)">きめない</button>
+        <button type="button" class="chip" data-sleeve="short" onclick="selectSleeve(this)">半そで</button>
+        <button type="button" class="chip" data-sleeve="long" onclick="selectSleeve(this)">長そで</button>
+      </div>
+    </div>
+    <div class="toggle-wrap"><div class="toggle" id="reg-washing" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div><span class="toggle-label">🫧 せんたく中</span></div>
+    <div class="toggle-wrap"><div class="toggle" id="reg-fav" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div><span class="toggle-label">⭐ おきにいり</span></div>
+  </div>
+  <button class="btn btn-primary" id="save-btn" onclick="saveClothing()">💾 ほぞんする</button>
+</div>
+
+<div id="screen-history" class="screen">
+  <h2 style="font-size:18px; margin-bottom:10px;">📖 きたふくのきろく</h2>
+  <div id="history-container"></div>
+  <div id="history-empty" class="no-proposal" style="display:none;"><div class="no-icon">📖</div><p>まだきろくがないよ</p></div>
+</div>
+
+<div id="screen-settings" class="screen">
+  <h2 style="font-size:18px; margin-bottom:14px;">⚙ せってい</h2>
+  <div class="card">
+    <div class="card-title">☁ クラウドどうき（Supabase）</div>
+    <div class="settings-status" id="supabase-status"><span id="supabase-status-text">みせっていです</span></div>
+    <div class="settings-note">📌 起動時にじどうせつぞく・どうきします。season カラムに JSON 配列、sleeve カラム(text) の追加を推奨します。</div>
+    <div class="form-group"><label class="form-label">Supabase URL</label><input type="url" class="form-input" id="sb-url"></div>
+    <div class="form-group"><label class="form-label">Supabase Publishable Key</label><input type="text" class="form-input" id="sb-key"></div>
+    <div class="form-group"><label class="form-label">かぞくコード</label><input type="text" class="form-input" id="sb-family" maxlength="40"></div>
+    <div class="btn-group"><button class="btn btn-sm btn-primary" onclick="connectSupabase()" style="flex:1;">🔗 せつぞく</button><button class="btn btn-sm btn-danger" onclick="disconnectSupabase()" style="flex:1;">🔌 せつだん</button></div>
+    <div style="margin-top:10px;"><button class="btn btn-sm btn-accent" onclick="syncToCloud()" style="width:100%;" id="btn-sync-cloud" disabled>☁ クラウドにおくる</button></div>
+    <div style="margin-top:8px;"><button class="btn btn-sm btn-secondary" onclick="syncFromCloud()" style="width:100%;" id="btn-sync-local" disabled>📥 クラウドからもらう</button></div>
+  </div>
+  <div class="card"><div class="card-title">🗄 データかんり</div><button class="btn btn-sm btn-outline mb-8" onclick="showSampleDialog()" style="width:100%;">📦 サンプルデータをついか</button><button class="btn btn-sm btn-danger" onclick="clearAllData()" style="width:100%;">🗑 すべてのローカルデータをさくじょ</button></div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-screen="home" onclick="switchScreen('home')"><span class="nav-icon">🏠</span>ホーム</button>
+  <button class="nav-btn" data-screen="propose" onclick="switchScreen('propose')"><span class="nav-icon">✨</span>ていあん</button>
+  <button class="nav-btn" data-screen="list" onclick="switchScreen('list')"><span class="nav-icon">👚</span>ふく</button>
+  <button class="nav-btn" data-screen="register" onclick="startNewRegistration()"><span class="nav-icon">➕</span>とうろく</button>
+  <button class="nav-btn" data-screen="history" onclick="switchScreen('history')"><span class="nav-icon">📖</span>きろく</button>
+</nav>
+
+<div class="modal-overlay" id="detail-modal" onclick="closeDetailModal(event)"><div class="modal-content"><div class="modal-handle"></div><div id="detail-body"></div></div></div>
+<div class="confirm-overlay" id="confirm-dialog"><div class="confirm-box"><p class="confirm-msg" id="confirm-msg"></p><div class="confirm-btns"><button class="btn btn-sm btn-outline" onclick="closeConfirm(false)">やめる</button><button class="btn btn-sm btn-primary" onclick="closeConfirm(true)">OK</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   リンのコーデアプリ v4
+   追加: 季節複数選択 / 今日明日切替 / 提案ロジック改善 / 半袖長袖
+   ================================================================ */
+const DEFAULT_SUPABASE_URL = 'https://hbfsjzxfguuznlsecdzr.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'sb_publishable_7dqut78ivU9VArEs5GhJ1Q_YdMOQo43';
+const DEFAULT_FAMILY_CODE = 'matsui-family';
+const KITAYAMATA_FALLBACK = { lat: 35.5616, lon: 139.5924, label: '横浜市都筑区北山田' };
+const STORAGE_CLOTHES = 'rin_clothes';
+const STORAGE_HISTORY = 'rin_history';
+const STORAGE_SB_CONFIG = 'rin_sb_config';
+const PHOTO_MAX_SIZE = 600;
+const PHOTO_QUALITY = 0.65;
+
+const COLORS = [
+  {id:'white',name:'しろ',hex:'#FFFFFF',border:'#DDD',rgb:[255,255,255]},
+  {id:'black',name:'くろ',hex:'#333333',border:'#333',rgb:[51,51,51]},
+  {id:'gray',name:'グレー',hex:'#999999',border:'#999',rgb:[153,153,153]},
+  {id:'red',name:'あか',hex:'#E53935',border:'#E53935',rgb:[229,57,53]},
+  {id:'pink',name:'ピンク',hex:'#EC407A',border:'#EC407A',rgb:[236,64,122]},
+  {id:'orange',name:'オレンジ',hex:'#FF9800',border:'#FF9800',rgb:[255,152,0]},
+  {id:'yellow',name:'きいろ',hex:'#FDD835',border:'#F9A825',rgb:[253,216,53]},
+  {id:'green',name:'みどり',hex:'#43A047',border:'#43A047',rgb:[67,160,71]},
+  {id:'blue',name:'あお',hex:'#1E88E5',border:'#1E88E5',rgb:[30,136,229]},
+  {id:'navy',name:'ネイビー',hex:'#283593',border:'#283593',rgb:[40,53,147]},
+  {id:'purple',name:'むらさき',hex:'#8E24AA',border:'#8E24AA',rgb:[142,36,170]},
+  {id:'brown',name:'ちゃいろ',hex:'#6D4C41',border:'#6D4C41',rgb:[109,76,65]},
+  {id:'beige',name:'ベージュ',hex:'#D7CCC8',border:'#BCAAA4',rgb:[215,204,200]},
+  {id:'multi',name:'カラフル',hex:'linear-gradient(135deg,#E53935,#FDD835,#1E88E5,#43A047)',border:'#888',rgb:[128,128,128]},
+];
+const CATEGORY_NAMES = { tops:'トップス', bottoms:'ボトムス', onepiece:'ワンピース', outer:'アウター' };
+const SEASON_NAMES = { all:'オールシーズン', spring:'はる', summer:'なつ', autumn:'あき', winter:'ふゆ' };
+const SLEEVE_NAMES = { short:'半そで', long:'長そで', '':'きめてない' };
+const WEATHER_NAMES = { sunny:'はれ', cloudy:'くもり', rainy:'あめ', snowy:'ゆき' };
+/* 季節間の距離: 0=一致, 1=隣接, 2=遠い */
+const SEASON_DISTANCE = {
+  spring: { spring:0, summer:1, autumn:2, winter:1 },
+  summer: { spring:1, summer:0, autumn:1, winter:2 },
+  autumn: { spring:2, summer:1, autumn:0, winter:1 },
+  winter: { spring:1, summer:2, autumn:1, winter:0 },
+};
+
+let _isSaving = false, _pendingPhotoBase64 = '', _pendingPhotoBlob = null, _editingId = '';
+let _currentFilter = 'all', _supabase = null, _familyCode = '';
+let _currentProposals = [], _weatherLoading = false, _isAnalyzing = false, _analyzeGeneration = 0;
+let _selectedDayOffset = 1; // 0=今日, 1=明日
+let _cachedWeatherData = null;
+
+/* ===== 後方互換: 季節正規化 ===== */
+function normalizeSeasons(item) {
+  if (item.seasons && Array.isArray(item.seasons) && item.seasons.length > 0) return item.seasons;
+  if (item.season) {
+    if (Array.isArray(item.season)) return item.season;
+    try { const p = JSON.parse(item.season); if (Array.isArray(p)) return p; } catch {}
+    return item.season === 'all' ? ['all'] : [item.season];
+  }
+  return ['all'];
+}
+function seasonsToLabel(ss) {
+  if (!ss || !ss.length || ss.includes('all')) return 'オールシーズン';
+  return ss.map(s => SEASON_NAMES[s] || s).join('・');
+}
+/** 季節適合スコア: 一致+15, 隣接-10, 遠い-35, all+10 */
+function seasonScore(itemSeasons, curSeason) {
+  const ss = Array.isArray(itemSeasons) ? itemSeasons : normalizeSeasons({ seasons: itemSeasons });
+  if (ss.includes('all')) return 10;
+  let best = 3;
+  for (const s of ss) {
+    const d = SEASON_DISTANCE[curSeason] ? (SEASON_DISTANCE[curSeason][s] ?? 2) : 2;
+    if (d < best) best = d;
+  }
+  if (best === 0) return 15;
+  if (best === 1) return -10;
+  return -35;
+}
+
+/* ===== データ管理 ===== */
+function loadClothes() {
+  try { const r = localStorage.getItem(STORAGE_CLOTHES); return r ? (Array.isArray(JSON.parse(r)) ? JSON.parse(r) : []) : []; }
+  catch (e) { return []; }
+}
+function saveClothesData(c) {
+  try { localStorage.setItem(STORAGE_CLOTHES, JSON.stringify(c)); return true; }
+  catch (e) { if (e.name === 'QuotaExceededError' || e.code === 22) showToast('ようりょうがいっぱい'); else showToast('ほぞんしっぱい'); return false; }
+}
+function loadHistory() { try { const r = localStorage.getItem(STORAGE_HISTORY); return r ? (Array.isArray(JSON.parse(r)) ? JSON.parse(r) : []) : []; } catch { return []; } }
+function saveHistoryData(h) { try { localStorage.setItem(STORAGE_HISTORY, JSON.stringify(h)); return true; } catch { showToast('きろくほぞんエラー'); return false; } }
+function loadSupabaseConfig() { try { return JSON.parse(localStorage.getItem(STORAGE_SB_CONFIG)); } catch { return null; } }
+function saveSupabaseConfig(c) { try { localStorage.setItem(STORAGE_SB_CONFIG, JSON.stringify(c)); } catch {} }
+
+/* ===== UI共通 ===== */
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), 2500); }
+let _confirmResolve = null;
+function showConfirm(msg) { return new Promise(r => { _confirmResolve = r; document.getElementById('confirm-msg').textContent = msg; document.getElementById('confirm-dialog').classList.add('show'); }); }
+function closeConfirm(result) { document.getElementById('confirm-dialog').classList.remove('show'); if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; } }
+function showSaveStatus(t, x) { const el = document.getElementById('save-status'), ic = document.getElementById('save-status-icon'), tx = document.getElementById('save-status-text'); el.className = 'save-status ' + t; if (t === 'saving') ic.innerHTML = '<span class="spinner"></span>'; else if (t === 'success') ic.textContent = '✅'; else if (t === 'error') ic.textContent = '❌'; tx.textContent = x; }
+function hideSaveStatus() { document.getElementById('save-status').className = 'save-status'; }
+function disableSaveButton() { const b = document.getElementById('save-btn'); b.disabled = true; b.textContent = '⏳ ほぞんちゅう...'; }
+function enableSaveButton() { const b = document.getElementById('save-btn'); b.disabled = false; b.textContent = '💾 ほぞんする'; }
+function showAnalyzeStatus(type, text) { const el = document.getElementById('analyze-status'), tx = document.getElementById('analyze-status-text'), ic = document.getElementById('analyze-status-icon'); el.className = 'analyze-status ' + type; if (type === 'analyzing') ic.innerHTML = '<span class="spinner"></span>'; else ic.textContent = ''; tx.textContent = text; }
+function hideAnalyzeStatus() { document.getElementById('analyze-status').className = 'analyze-status'; }
+
+/* ===== 天気（今日/明日切替対応） ===== */
+function updateWeatherStatus(msg) { const el = document.getElementById('weather-status'); if (el) el.textContent = msg; }
+function mapWeatherCodeToApp(code) {
+  if (code === 0) return 'sunny';
+  if ([1,2,3,45,48].includes(code)) return 'cloudy';
+  if ([51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99].includes(code)) return 'rainy';
+  if ([71,73,75,77,85,86].includes(code)) return 'snowy';
+  return 'cloudy';
+}
+function getCurrentPositionPromise(ms) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error('位置情報なし')); return; }
+    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: false, timeout: ms || 7000, maximumAge: 600000 });
+  });
+}
+function selectWeatherDay(offset) {
+  _selectedDayOffset = offset;
+  document.querySelectorAll('.day-toggle-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.day) === offset));
+  const title = document.getElementById('weather-card-title');
+  if (title) title.textContent = offset === 0 ? '🌤 きょうのてんき' : '🌤 あしたのてんき';
+  if (_cachedWeatherData) applyWeatherData(_cachedWeatherData, offset);
+  else fetchWeather(offset);
+}
+function applyWeatherData(daily, idx) {
+  if (!daily || !daily.weather_code || daily.weather_code.length <= idx) return;
+  const code = daily.weather_code[idx], temp = Math.round(daily.temperature_2m_max[idx]);
+  const w = mapWeatherCodeToApp(code);
+  const el = document.getElementById('input-temp'), wEl = document.getElementById('input-weather');
+  if (el) el.value = String(temp); if (wEl) wEl.value = w;
+  const dl = idx === 0 ? 'きょう' : 'あした';
+  updateWeatherStatus(dl + 'のてんき: ' + WEATHER_NAMES[w] + ' / ' + temp + '℃' + (daily._src ? '（' + daily._src + '）' : ''));
+}
+async function fetchWeather(dayOffset) {
+  if (_weatherLoading) return; _weatherLoading = true;
+  const dl = dayOffset === 0 ? 'きょう' : 'あした';
+  updateWeatherStatus(dl + 'のてんきをしらべています…');
+  let lat = KITAYAMATA_FALLBACK.lat, lon = KITAYAMATA_FALLBACK.lon, src = KITAYAMATA_FALLBACK.label;
+  try { const pos = await getCurrentPositionPromise(7000); lat = pos.coords.latitude; lon = pos.coords.longitude; src = 'げんざいち'; } catch {}
+  try {
+    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=weather_code,temperature_2m_max&timezone=Asia%2FTokyo&forecast_days=3');
+    if (!res.ok) throw new Error('APIエラー');
+    const data = await res.json(), daily = data && data.daily;
+    if (!daily || !daily.weather_code || daily.weather_code.length < 2) throw new Error('データ不足');
+    daily._src = src; _cachedWeatherData = daily;
+    applyWeatherData(daily, dayOffset);
+  } catch (e) { updateWeatherStatus(dl + 'のてんきしゅとくしっぱい。てどうでへんこうできます。'); }
+  finally { _weatherLoading = false; }
+}
+function fetchTomorrowWeather() { return fetchWeather(1); }
+
+/* ===== Supabase ===== */
+function applyEmbeddedSupabaseConfig() {
+  const u = document.getElementById('sb-url'), k = document.getElementById('sb-key'), f = document.getElementById('sb-family');
+  if (u) u.value = DEFAULT_SUPABASE_URL; if (k) k.value = DEFAULT_SUPABASE_KEY; if (f) f.value = DEFAULT_FAMILY_CODE;
+}
+async function connectSupabase() {
+  const url = document.getElementById('sb-url').value.trim(), key = document.getElementById('sb-key').value.trim(), family = document.getElementById('sb-family').value.trim();
+  if (!url || !key || !family) { showToast('すべていれてね'); return false; }
+  try {
+    if (typeof supabase === 'undefined' || !supabase.createClient) { showToast('Supabaseよみこめていません'); return false; }
+    _supabase = supabase.createClient(url, key); _familyCode = family;
+    const { error } = await _supabase.from('clothes').select('id').limit(1);
+    if (error) { _supabase = null; _familyCode = ''; showToast('しっぱい: ' + error.message); updateSyncUI(); return false; }
+    saveSupabaseConfig({ url, key, family }); updateSyncUI();
+    await syncFromCloudCore(); showToast('☁ せつぞくしました！'); return true;
+  } catch (e) { _supabase = null; _familyCode = ''; updateSyncUI(); showToast('エラー: ' + e.message); return false; }
+}
+function disconnectSupabase() { _supabase = null; _familyCode = ''; localStorage.removeItem(STORAGE_SB_CONFIG); showToast('せつだん'); updateSyncUI(); }
+async function autoConnectSupabase() {
+  try {
+    applyEmbeddedSupabaseConfig();
+    if (typeof supabase === 'undefined' || !supabase.createClient) { updateSyncUI(); return false; }
+    _supabase = supabase.createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_KEY); _familyCode = DEFAULT_FAMILY_CODE;
+    const { error } = await _supabase.from('clothes').select('id').limit(1);
+    if (error) { _supabase = null; _familyCode = ''; updateSyncUI(); return false; }
+    saveSupabaseConfig({ url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_KEY, family: DEFAULT_FAMILY_CODE }); updateSyncUI(); return true;
+  } catch { _supabase = null; _familyCode = ''; updateSyncUI(); return false; }
+}
+function updateSyncUI() {
+  const ind = document.getElementById('sync-indicator'), ic = document.getElementById('sync-icon'), tx = document.getElementById('sync-text');
+  const st = document.getElementById('supabase-status'), stx = document.getElementById('supabase-status-text');
+  if (_supabase && _familyCode) {
+    ind.className = 'sync-indicator online'; ic.textContent = '☁'; tx.textContent = 'クラウド';
+    if (st) st.className = 'settings-status connected'; if (stx) stx.textContent = '✅ せつぞくちゅう（' + _familyCode + '）';
+    const bc = document.getElementById('btn-sync-cloud'), bl = document.getElementById('btn-sync-local');
+    if (bc) bc.disabled = false; if (bl) bl.disabled = false;
+  } else {
+    ind.className = 'sync-indicator offline'; ic.textContent = '💾'; tx.textContent = 'ローカル';
+    if (st) st.className = 'settings-status disconnected'; if (stx) stx.textContent = 'みせってい';
+    const bc = document.getElementById('btn-sync-cloud'), bl = document.getElementById('btn-sync-local');
+    if (bc) bc.disabled = true; if (bl) bl.disabled = true;
+  }
+}
+function parseSeasonFromCloud(val) {
+  if (!val) return ['all'];
+  if (typeof val === 'string') { try { const p = JSON.parse(val); if (Array.isArray(p)) return p; } catch {} return val === 'all' ? ['all'] : [val]; }
+  if (Array.isArray(val)) return val;
+  return ['all'];
+}
+async function syncFromCloudCore() {
+  if (!_supabase || !_familyCode) throw new Error('クラウド未接続');
+  const { data: cd, error: ce } = await _supabase.from('clothes').select('*').eq('family_code', _familyCode); if (ce) throw ce;
+  const { data: hd, error: he } = await _supabase.from('wear_history').select('*').eq('family_code', _familyCode).order('wear_date', { ascending: false }); if (he) throw he;
+  const clothes = (cd || []).map(r => ({
+    id: r.id, name: r.name, category: r.category, color: r.color,
+    seasons: parseSeasonFromCloud(r.season), sleeve: r.sleeve || '',
+    washing: r.washing || false, fav: r.fav || false, photo: r.photo_url || '',
+    wearCount: r.wear_count || 0, lastWorn: r.last_worn || null, createdAt: r.created_at || new Date().toISOString(),
+  }));
+  const history = (hd || []).map(r => ({ date: r.wear_date, tops: r.tops_id || null, bottoms: r.bottoms_id || null, onepiece: r.onepiece_id || null, outer: r.outer_id || null }));
+  saveClothesData(clothes); saveHistoryData(history); refreshHome(); renderClothesList(); renderHistory();
+}
+async function syncFromCloud() {
+  if (!_supabase || !_familyCode) { showToast('せつぞくしてください'); return; }
+  const ok = await showConfirm('クラウドからデータをもらいます。'); if (!ok) return;
+  showToast('📥 よみこみちゅう...'); try { await syncFromCloudCore(); showToast('✅ かんりょう！'); } catch (e) { showToast('しっぱい: ' + e.message); }
+}
+async function syncToCloud() {
+  if (!_supabase || !_familyCode) { showToast('せつぞくしてください'); return; }
+  const ok = await showConfirm('ローカル→クラウドにおくります。'); if (!ok) return;
+  showToast('☁ どうきちゅう...');
+  try {
+    const clothes = loadClothes();
+    for (const item of clothes) { const saved = await upsertClothesToCloud(item); item.photo = saved.photo; }
+    saveClothesData(clothes);
+    for (const rec of loadHistory()) await upsertHistoryRecord(rec);
+    showToast('✅ かんりょう！');
+  } catch (e) { showToast('しっぱい: ' + e.message); }
+}
+async function upsertHistoryRecord(rec) {
+  if (!_supabase || !_familyCode) throw new Error('未接続');
+  const { error } = await _supabase.from('wear_history').upsert({
+    id: rec.date + '_' + _familyCode, family_code: _familyCode, wear_date: rec.date,
+    tops_id: rec.tops || null, bottoms_id: rec.bottoms || null, onepiece_id: rec.onepiece || null, outer_id: rec.outer || null,
+  }, { onConflict: 'id' }); if (error) throw error;
+}
+async function upsertClothesToCloud(item) {
+  if (!_supabase || !_familyCode || !item) throw new Error('未接続');
+  let photoUrl = item.photo || '';
+  if (photoUrl && photoUrl.startsWith('data:')) {
+    const bin = atob(photoUrl.split(',')[1]); const buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    const path = _familyCode + '/' + item.id + '.jpg';
+    const { error: ue } = await _supabase.storage.from('clothes-photos').upload(path, new Blob([buf], { type: 'image/jpeg' }), { upsert: true, contentType: 'image/jpeg' });
+    if (ue) throw ue;
+    const { data: ud } = _supabase.storage.from('clothes-photos').getPublicUrl(path);
+    if (ud && ud.publicUrl) photoUrl = ud.publicUrl;
+  }
+  const seasons = normalizeSeasons(item);
+  const { error } = await _supabase.from('clothes').upsert({
+    id: item.id, family_code: _familyCode, name: item.name, category: item.category, color: item.color,
+    season: JSON.stringify(seasons), sleeve: item.sleeve || '',
+    washing: item.washing || false, fav: item.fav || false, photo_url: photoUrl,
+    wear_count: item.wearCount || 0, last_worn: item.lastWorn || null, created_at: item.createdAt || new Date().toISOString(),
+  }, { onConflict: 'id' }); if (error) throw error;
+  return { ...item, photo: photoUrl };
+}
+async function deleteClothingFromCloud(id) {
+  if (!_supabase || !_familyCode) return;
+  await _supabase.from('clothes').delete().eq('id', id);
+  try { await _supabase.storage.from('clothes-photos').remove([_familyCode + '/' + id + '.jpg']); } catch {}
+}
+
+/* ===== 画面切替・ホーム ===== */
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const t = document.getElementById('screen-' + name); if (t) t.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === name));
+  if (name === 'home') refreshHome(); if (name === 'list') renderClothesList(); if (name === 'history') renderHistory(); if (name === 'settings') updateSyncUI();
+  window.scrollTo(0, 0);
+}
+function refreshHome() {
+  const h = new Date().getHours(), g = document.getElementById('greeting-text'), s = document.getElementById('greeting-sub');
+  if (h < 10) { g.textContent = 'おはよう、リン！'; s.textContent = 'きょうはなにをきようかな？'; }
+  else if (h < 15) { g.textContent = 'こんにちは、リン！'; s.textContent = 'あしたのじゅんびをしよう！'; }
+  else { g.textContent = 'こんばんは、リン！'; s.textContent = 'あしたのふくをきめちゃおう！'; }
+  const clothes = loadClothes(), history = loadHistory();
+  document.getElementById('stat-total').textContent = clothes.length;
+  document.getElementById('stat-available').textContent = clothes.filter(c => !c.washing).length;
+  document.getElementById('stat-history').textContent = history.length;
+  renderRecentHistory();
+}
+function renderRecentHistory() {
+  const c = document.getElementById('recent-history'), history = loadHistory();
+  if (!history.length) { c.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:8px;">まだきろくがないよ</p>'; return; }
+  const clothes = loadClothes(); let html = '';
+  history.slice(0, 3).forEach(rec => {
+    html += '<div style="margin-bottom:8px;"><div style="font-size:12px;color:var(--text-light);margin-bottom:4px;">' + formatDate(rec.date) + '</div><div style="display:flex;gap:6px;">';
+    const cats = rec.onepiece ? ['onepiece', 'outer'] : ['tops', 'bottoms', 'outer'];
+    cats.forEach(cat => { const id = rec[cat]; if (!id) return; const item = clothes.find(x => x.id === id); if (!item) return; html += '<div style="flex:1;text-align:center;"><div style="width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#F5E6FF,#E3F2FD);margin-bottom:2px;">' + (item.photo ? '<img src="' + item.photo + '" style="width:100%;height:100%;object-fit:cover;">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">' + getCategoryEmoji(item.category) + '</div>') + '</div><div style="font-size:10px;">' + escapeHtml(item.name) + '</div></div>'; });
+    html += '</div></div>';
+  }); c.innerHTML = html;
+}
+
+/* ===== 色・季節・袖選択UI ===== */
+function initColorOptions() { let h = ''; COLORS.forEach(co => { h += '<div class="color-opt" data-color="' + co.id + '" title="' + co.name + '" style="background:' + co.hex + ';border-color:' + co.border + ';" onclick="selectColor(this)"></div>'; }); document.getElementById('color-options').innerHTML = h; }
+function selectColor(el) { document.querySelectorAll('#color-options .color-opt').forEach(o => o.classList.remove('active')); el.classList.add('active'); }
+
+function toggleSeasonChip(el) {
+  const s = el.dataset.season;
+  if (s === 'all') { document.querySelectorAll('#season-chips .chip').forEach(c => c.classList.remove('active')); el.classList.add('active'); }
+  else { const ac = document.querySelector('#season-chips .chip[data-season="all"]'); if (ac) ac.classList.remove('active'); el.classList.toggle('active'); if (!document.querySelector('#season-chips .chip.active')) { if (ac) ac.classList.add('active'); } }
+}
+function getSelectedSeasons() { const a = []; document.querySelectorAll('#season-chips .chip.active').forEach(el => a.push(el.dataset.season)); return (!a.length || a.includes('all')) ? ['all'] : a; }
+function setSeasonChips(ss) {
+  document.querySelectorAll('#season-chips .chip').forEach(c => c.classList.remove('active'));
+  const arr = Array.isArray(ss) ? ss : [ss || 'all'];
+  if (arr.includes('all') || !arr.length) { const ac = document.querySelector('#season-chips .chip[data-season="all"]'); if (ac) ac.classList.add('active'); }
+  else { arr.forEach(s => { const el = document.querySelector('#season-chips .chip[data-season="' + s + '"]'); if (el) el.classList.add('active'); }); }
+}
+function selectSleeve(el) { document.querySelectorAll('#sleeve-chips .chip').forEach(c => c.classList.remove('active')); el.classList.add('active'); }
+function getSelectedSleeve() { const a = document.querySelector('#sleeve-chips .chip.active'); return a ? (a.dataset.sleeve || '') : ''; }
+function setSleeveChip(v) { document.querySelectorAll('#sleeve-chips .chip').forEach(c => c.classList.remove('active')); const el = document.querySelector('#sleeve-chips .chip[data-sleeve="' + (v || '') + '"]'); if (el) el.classList.add('active'); }
+
+/* ===== 画像圧縮 ===== */
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(), reader = new FileReader();
+    reader.onerror = () => reject(new Error('読み込みしっぱい'));
+    reader.onload = function (e) {
+      img.onerror = () => reject(new Error('がぞうしっぱい'));
+      img.onload = function () {
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > PHOTO_MAX_SIZE || h > PHOTO_MAX_SIZE) { if (w > h) { h = Math.round(h * PHOTO_MAX_SIZE / w); w = PHOTO_MAX_SIZE; } else { w = Math.round(w * PHOTO_MAX_SIZE / h); h = PHOTO_MAX_SIZE; } }
+        const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function (blob) {
+          if (!blob) { reject(new Error('Blob変換しっぱい')); return; }
+          const r2 = new FileReader(); r2.onload = () => resolve({ base64: r2.result, blob, canvas }); r2.onerror = () => reject(new Error('Base64しっぱい')); r2.readAsDataURL(blob);
+        }, 'image/jpeg', PHOTO_QUALITY);
+      }; img.src = e.target.result;
+    }; reader.readAsDataURL(file);
+  });
+}
+
+/* ===== 写真解析（袖推定追加） ===== */
+function analyzeClothingPhoto(canvas) {
+  const ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
+  const sx = Math.floor(w * 0.2), sy = Math.floor(h * 0.2), sw = Math.floor(w * 0.6), sh = Math.floor(h * 0.6);
+  const data = ctx.getImageData(sx, sy, sw, sh).data;
+  let rS = 0, gS = 0, bS = 0, cnt = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i+1], b = data[i+2], br = (r+g+b)/3;
+    if (r > 160 && g > 100 && b > 60 && r > g && g > b && (r-g) > 15 && br > 120 && br < 220) continue;
+    rS += r; gS += g; bS += b; cnt++;
+  }
+  if (cnt < 10) { rS=0; gS=0; bS=0; cnt=0; for (let i=0;i<data.length;i+=16){rS+=data[i];gS+=data[i+1];bS+=data[i+2];cnt++;} }
+  const aR = Math.round(rS/cnt), aG = Math.round(gS/cnt), aB = Math.round(bS/cnt);
+  let bestColor = 'gray', bestDist = Infinity;
+  for (const c of COLORS) { if (c.id === 'multi') continue; const d = Math.sqrt((aR-c.rgb[0])**2+(aG-c.rgb[1])**2+(aB-c.rgb[2])**2); if (d < bestDist) { bestDist = d; bestColor = c.id; } }
+  const aspect = h / w;
+  let category = 'tops';
+  if (aspect > 1.35) category = 'onepiece';
+  else if (aspect < 0.78) category = 'bottoms';
+  let sleeve = '';
+  if (category !== 'bottoms') { const cs = getCurrentSeason(); if (cs === 'summer') sleeve = 'short'; else if (cs === 'winter') sleeve = 'long'; }
+  const colorObj = COLORS.find(c => c.id === bestColor);
+  return { color: bestColor, category, name: (colorObj ? colorObj.name : '') + 'の' + (CATEGORY_NAMES[category] || 'ふく'), sleeve };
+}
+async function runPhotoAnalysis(canvas) {
+  const gen = ++_analyzeGeneration; _isAnalyzing = true;
+  showAnalyzeStatus('analyzing', '🔍 かいせきちゅう...');
+  await sleep(250);
+  if (gen !== _analyzeGeneration) { _isAnalyzing = false; return; }
+  try {
+    const r = analyzeClothingPhoto(canvas);
+    if (gen !== _analyzeGeneration) { _isAnalyzing = false; return; }
+    if (!document.getElementById('reg-name').value.trim()) document.getElementById('reg-name').value = r.name;
+    if (!document.getElementById('reg-category').value) document.getElementById('reg-category').value = r.category;
+    if (!document.querySelector('#color-options .color-opt.active')) { const ce = document.querySelector('#color-options .color-opt[data-color="'+r.color+'"]'); if (ce) ce.classList.add('active'); }
+    if (r.sleeve && !getSelectedSleeve()) setSleeveChip(r.sleeve);
+    showAnalyzeStatus('done', '✅ こうほをいれたよ（かくにんしてね）');
+  } catch (e) { if (gen === _analyzeGeneration) showAnalyzeStatus('fail', '⚠ てどうでいれてね'); }
+  finally { _isAnalyzing = false; }
+}
+
+/* ===== 写真選択・保存 ===== */
+async function handlePhotoSelect(event) {
+  const file = event.target.files && event.target.files[0]; if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('がぞうをえらんでね'); event.target.value=''; return; }
+  if (file.size > 15*1024*1024) { showToast('おおきすぎ（15MBまで）'); event.target.value=''; return; }
+  _analyzeGeneration++; hideAnalyzeStatus();
+  const preview = document.getElementById('photo-preview');
+  preview.innerHTML = '<span class="spinner"></span><span>よみこみちゅう...</span>';
+  try {
+    const result = await compressImage(file);
+    _pendingPhotoBase64 = result.base64; _pendingPhotoBlob = result.blob;
+    preview.innerHTML = '<img src="'+result.base64+'" alt="プレビュー">'; preview.classList.add('has-photo');
+    document.getElementById('photo-extra-buttons').classList.add('show');
+    if (!_editingId && result.canvas) {
+      document.getElementById('reg-name').value=''; document.getElementById('reg-category').value='';
+      document.querySelectorAll('#color-options .color-opt').forEach(o=>o.classList.remove('active'));
+      setSleeveChip(''); runPhotoAnalysis(result.canvas);
+    }
+  } catch (err) { showToast('よみこみしっぱい'); resetPhotoUI(); }
+  event.target.value='';
+}
+function downloadCurrentPhoto() {
+  if (!_pendingPhotoBlob && !_pendingPhotoBase64) { showToast('しゃしんがないよ'); return; }
+  try { let url; if (_pendingPhotoBlob) url=URL.createObjectURL(_pendingPhotoBlob); else { const bin=atob(_pendingPhotoBase64.split(',')[1]); const buf=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i); url=URL.createObjectURL(new Blob([buf],{type:'image/jpeg'})); } const a=document.createElement('a'); a.href=url; a.download='rin-fuku-'+new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)+'.jpg'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),5000); showToast('📥 ほぞんしたよ！'); } catch { showToast('しっぱい'); }
+}
+function clearPhoto() { _pendingPhotoBase64=''; _pendingPhotoBlob=null; _analyzeGeneration++; hideAnalyzeStatus(); if(!_editingId){document.getElementById('reg-name').value='';document.getElementById('reg-category').value='';document.querySelectorAll('#color-options .color-opt').forEach(o=>o.classList.remove('active'));setSleeveChip('');} resetPhotoUI(); }
+function resetPhotoUI() { const p=document.getElementById('photo-preview'); p.innerHTML='<span class="placeholder-icon">📸</span><span>したのボタンからしゃしんをえらんでね</span>'; p.classList.remove('has-photo'); document.getElementById('photo-extra-buttons').classList.remove('show'); document.getElementById('photo-input-camera').value=''; document.getElementById('photo-input-gallery').value=''; }
+
+/* ===== 服登録 ===== */
+function startNewRegistration() { _editingId=''; resetRegisterForm(); switchScreen('register'); }
+function resetRegisterForm() {
+  _editingId=''; _pendingPhotoBase64=''; _pendingPhotoBlob=null; _isSaving=false; _analyzeGeneration++;
+  document.getElementById('register-title').textContent='👕 ふくをとうろく';
+  document.getElementById('reg-name').value=''; document.getElementById('reg-category').value='';
+  document.querySelectorAll('#color-options .color-opt').forEach(o=>o.classList.remove('active'));
+  setSeasonChips(['all']); setSleeveChip('');
+  document.getElementById('reg-washing').classList.remove('on'); document.getElementById('reg-fav').classList.remove('on');
+  resetPhotoUI(); hideSaveStatus(); hideAnalyzeStatus(); enableSaveButton();
+  document.querySelectorAll('.form-error').forEach(e=>e.classList.remove('show'));
+}
+async function saveClothing() {
+  if (_isSaving) return; if (_isAnalyzing) { showToast('かいせきまってね'); return; }
+  _isSaving=true; disableSaveButton(); hideSaveStatus();
+  try {
+    let valid=true;
+    const name=document.getElementById('reg-name').value.trim(), category=document.getElementById('reg-category').value;
+    const selColor=document.querySelector('#color-options .color-opt.active'), color=selColor?selColor.dataset.color:'';
+    const seasons=getSelectedSeasons(), sleeve=getSelectedSleeve();
+    const washing=document.getElementById('reg-washing').classList.contains('on'), fav=document.getElementById('reg-fav').classList.contains('on');
+    if(!name){document.getElementById('err-name').classList.add('show');valid=false;}else document.getElementById('err-name').classList.remove('show');
+    if(!category){document.getElementById('err-category').classList.add('show');valid=false;}else document.getElementById('err-category').classList.remove('show');
+    if(!color){document.getElementById('err-color').classList.add('show');valid=false;}else document.getElementById('err-color').classList.remove('show');
+    if(!valid){showToast('にゅうりょくをかくにんしてね');return;}
+    const clothes=loadClothes(), targetId=_editingId||generateId();
+    const eidx=clothes.findIndex(c=>c.id===targetId), existing=eidx>=0?clothes[eidx]:null;
+    let item={id:targetId,name,category,color,seasons,sleeve,washing,fav,
+      photo:_pendingPhotoBase64||(existing?existing.photo:''), wearCount:existing?(existing.wearCount||0):0,
+      lastWorn:existing?(existing.lastWorn||null):null, createdAt:existing?(existing.createdAt||new Date().toISOString()):new Date().toISOString()};
+    if(_supabase&&_familyCode){showSaveStatus('saving','クラウドにほぞん...');item=await upsertClothesToCloud(item);}
+    else showSaveStatus('saving','ローカルにほぞん...');
+    if(eidx>=0)clothes[eidx]=item;else clothes.push(item);
+    if(!saveClothesData(clothes))throw new Error('ローカル保存失敗');
+    showSaveStatus('success',_editingId?'へんこうほぞん！':'とうろくかんりょう！');
+    showToast(_editingId?'✏ ほぞんしたよ！':'✅ とうろくしたよ！');
+    await sleep(500); resetRegisterForm(); switchScreen('list');
+  } catch(err){showSaveStatus('error','エラー: '+err.message);showToast('ほぞんしっぱい');}
+  finally{_isSaving=false;enableSaveButton();}
+}
+
+/* ===== 服一覧 ===== */
+function filterClothes(f,el){_currentFilter=f;document.querySelectorAll('#filter-bar .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');renderClothesList();}
+function renderClothesList() {
+  const grid=document.getElementById('clothes-grid'); let clothes=loadClothes();
+  if(_currentFilter==='tops')clothes=clothes.filter(c=>c.category==='tops');
+  else if(_currentFilter==='bottoms')clothes=clothes.filter(c=>c.category==='bottoms');
+  else if(_currentFilter==='onepiece')clothes=clothes.filter(c=>c.category==='onepiece');
+  else if(_currentFilter==='outer')clothes=clothes.filter(c=>c.category==='outer');
+  else if(_currentFilter==='washing')clothes=clothes.filter(c=>c.washing);
+  else if(_currentFilter==='fav')clothes=clothes.filter(c=>c.fav);
+  if(!clothes.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text-light);"><div style="font-size:48px;margin-bottom:8px;">👚</div><p>ふくがまだないよ</p></div>';return;}
+  let html='';
+  clothes.forEach(item=>{const co=COLORS.find(c=>c.id===item.color);
+    const sl=item.sleeve==='short'?' 半袖':item.sleeve==='long'?' 長袖':'';
+    html+='<div class="clothes-card" onclick="showClothesDetail(\''+item.id+'\')"><div class="card-photo">'+(item.photo?'<img src="'+item.photo+'">':'<span style="font-size:40px;">'+getCategoryEmoji(item.category)+'</span>')+'<div class="card-badges">'+(item.washing?'<span class="badge">🫧</span>':'')+(item.fav?'<span class="badge">⭐</span>':'')+'</div></div><div class="card-info"><div class="card-name">'+escapeHtml(item.name)+'</div><div class="card-meta">'+(CATEGORY_NAMES[item.category]||'')+sl+' ・ '+(co?co.name:'')+' ・ '+(item.wearCount||0)+'回</div></div></div>';
+  }); grid.innerHTML=html;
+}
+
+/* ===== 服詳細モーダル ===== */
+function showClothesDetail(id) {
+  const clothes=loadClothes(),item=clothes.find(c=>c.id===id);if(!item)return;
+  const co=COLORS.find(c=>c.id===item.color),lw=item.lastWorn?formatDate(item.lastWorn):'なし';
+  const ss=normalizeSeasons(item), slLabel=SLEEVE_NAMES[item.sleeve||'']||'';
+  document.getElementById('detail-body').innerHTML=
+    '<div class="modal-photo">'+(item.photo?'<img src="'+item.photo+'">':'<div style="width:100%;height:200px;display:flex;align-items:center;justify-content:center;font-size:64px;">'+getCategoryEmoji(item.category)+'</div>')+'</div>'
+    +'<div class="modal-name">'+escapeHtml(item.name)+'</div><div class="modal-details">'
+    +'<div class="detail-item"><div class="detail-label">カテゴリ</div>'+(CATEGORY_NAMES[item.category]||'')+'</div>'
+    +'<div class="detail-item"><div class="detail-label">いろ</div>'+(co?co.name:'')+'</div>'
+    +'<div class="detail-item"><div class="detail-label">きせつ</div>'+seasonsToLabel(ss)+'</div>'
+    +'<div class="detail-item"><div class="detail-label">そで</div>'+slLabel+'</div>'
+    +'<div class="detail-item"><div class="detail-label">きたかいすう</div>'+(item.wearCount||0)+'回</div>'
+    +'<div class="detail-item"><div class="detail-label">さいごにきた日</div>'+lw+'</div></div>'
+    +'<div class="modal-actions"><div class="btn-group">'
+    +'<button class="btn btn-sm '+(item.washing?'btn-accent':'btn-secondary')+'" onclick="toggleWashing(\''+id+'\')" style="flex:1;">'+(item.washing?'✅ おわり':'🫧 せんたく中')+'</button>'
+    +'<button class="btn btn-sm '+(item.fav?'btn-outline':'btn-accent')+'" onclick="toggleFav(\''+id+'\')" style="flex:1;">'+(item.fav?'⭐ かいじょ':'⭐ おきにいり')+'</button></div>'
+    +'<button class="btn btn-sm btn-secondary" onclick="editClothing(\''+id+'\')" style="width:100%;">✏ へんしゅう</button>'
+    +'<button class="btn btn-sm btn-danger" onclick="deleteClothing(\''+id+'\')" style="width:100%;">🗑 さくじょ</button></div>';
+  document.getElementById('detail-modal').classList.add('show');
+}
+function closeDetailModal(e){if(e.target===document.getElementById('detail-modal'))document.getElementById('detail-modal').classList.remove('show');}
+async function toggleWashing(id){const clothes=loadClothes(),idx=clothes.findIndex(c=>c.id===id);if(idx<0)return;const orig={...clothes[idx]};clothes[idx].washing=!clothes[idx].washing;try{if(_supabase&&_familyCode){const ci=await upsertClothesToCloud(clothes[idx]);clothes[idx].photo=ci.photo;}saveClothesData(clothes);document.getElementById('detail-modal').classList.remove('show');renderClothesList();showToast(clothes[idx].washing?'🫧 せんたく中':'✅ おわり！');}catch{clothes[idx]=orig;showToast('しっぱい');}}
+async function toggleFav(id){const clothes=loadClothes(),idx=clothes.findIndex(c=>c.id===id);if(idx<0)return;const orig={...clothes[idx]};clothes[idx].fav=!clothes[idx].fav;try{if(_supabase&&_familyCode){const ci=await upsertClothesToCloud(clothes[idx]);clothes[idx].photo=ci.photo;}saveClothesData(clothes);document.getElementById('detail-modal').classList.remove('show');renderClothesList();showToast(clothes[idx].fav?'⭐！':'かいじょ');}catch{clothes[idx]=orig;showToast('しっぱい');}}
+function editClothing(id){
+  const clothes=loadClothes(),item=clothes.find(c=>c.id===id);if(!item)return;
+  document.getElementById('detail-modal').classList.remove('show'); resetRegisterForm(); _editingId=item.id;
+  document.getElementById('register-title').textContent='✏ へんしゅう';
+  document.getElementById('reg-name').value=item.name; document.getElementById('reg-category').value=item.category;
+  const ce=document.querySelector('#color-options .color-opt[data-color="'+item.color+'"]');if(ce)ce.classList.add('active');
+  setSeasonChips(normalizeSeasons(item)); setSleeveChip(item.sleeve||'');
+  if(item.washing)document.getElementById('reg-washing').classList.add('on');
+  if(item.fav)document.getElementById('reg-fav').classList.add('on');
+  if(item.photo){_pendingPhotoBase64=item.photo;const p=document.getElementById('photo-preview');p.innerHTML='<img src="'+item.photo+'" alt="プレビュー">';p.classList.add('has-photo');document.getElementById('photo-extra-buttons').classList.add('show');try{if(item.photo.startsWith('data:')){const bin=atob(item.photo.split(',')[1]);const buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);_pendingPhotoBlob=new Blob([buf],{type:'image/jpeg'});}}catch{_pendingPhotoBlob=null;}}
+  switchScreen('register');
+}
+async function deleteClothing(id){document.getElementById('detail-modal').classList.remove('show');const ok=await showConfirm('さくじょする？');if(!ok)return;const clothes=loadClothes().filter(c=>c.id!==id);try{if(_supabase&&_familyCode)await deleteClothingFromCloud(id);saveClothesData(clothes);renderClothesList();refreshHome();showToast('さくじょしたよ');}catch{showToast('しっぱい');}}
+
+/* ===== コーデ提案（改善版: 季節重み強化, 袖対応, ワンピース対応） ===== */
+function generateProposals() {
+  const temp = parseInt(document.getElementById('input-temp').value) || 20;
+  const weather = document.getElementById('input-weather').value;
+  const whiteNg = document.querySelector('#check-white-ng input').checked;
+  const outdoor = document.querySelector('#check-outdoor input').checked;
+  const clothes = loadClothes();
+  document.getElementById('propose-condition').textContent = temp + '℃ / ' + WEATHER_NAMES[weather] + (whiteNg ? ' / しろNG' : '') + (outdoor ? ' / そとあそび' : '');
+
+  let available = clothes.filter(c => !c.washing);
+  if (whiteNg) available = available.filter(c => c.color !== 'white' && c.color !== 'beige');
+  const cs = getCurrentSeason();
+  const today = new Date().toISOString().split('T')[0];
+  const needOuter = temp < 20;
+
+  /* 改善版スコアリング: 季節重み大幅強化 + 袖対応 */
+  function scoreItem(item) {
+    let s = 50;
+    const mw = Math.max(...clothes.map(c => c.wearCount || 0), 1);
+    s += (1 - (item.wearCount || 0) / mw) * 15; // 偏り分散
+    if (item.lastWorn) {
+      const d = daysBetween(item.lastWorn, today);
+      if (d === 0) s -= 40; else if (d === 1) s -= 25; else if (d <= 3) s -= 10; else s += Math.min(d * 2, 15);
+    } else { s += 12; }
+    // 季節スコア（改善: 大幅な重み付け）
+    s += seasonScore(normalizeSeasons(item), cs);
+    // 袖スコア
+    if (item.sleeve === 'short') { if (temp >= 25) s += 15; else if (temp <= 15) s -= 15; }
+    if (item.sleeve === 'long') { if (temp <= 15) s += 15; else if (temp >= 28) s -= 15; }
+    // 天気
+    if (weather === 'rainy' && (item.color === 'white' || item.color === 'beige')) s -= 10;
+    if (outdoor && (item.color === 'white' || item.color === 'beige')) s -= 12;
+    s += Math.random() * 8;
+    return { ...item, score: s };
+  }
+
+  // 全カテゴリをスコアリング（季節フィルタは廃止、スコアで制御）
+  const tops = available.filter(c => c.category === 'tops');
+  const bottoms = available.filter(c => c.category === 'bottoms');
+  const onepieces = available.filter(c => c.category === 'onepiece');
+  const outers = available.filter(c => c.category === 'outer');
+  const st = tops.map(scoreItem).sort((a, b) => b.score - a.score);
+  const sb = bottoms.map(scoreItem).sort((a, b) => b.score - a.score);
+  const sp = onepieces.map(scoreItem).sort((a, b) => b.score - a.score);
+  const so = outers.map(scoreItem).sort((a, b) => b.score - a.score);
+
+  const proposals = [];
+  const labels = [['いちばんおすすめ！','🌟'],['こっちもいいかも！','💡'],['こんなくみあわせは？','🎨']];
+  const hasOp = sp.length > 0, hasTb = st.length > 0 && sb.length > 0;
+  let slots = [];
+  if (hasTb && hasOp) slots = [{type:'tb',ti:0,bi:0},{type:'op',oi:0},{type:'tb',ti:1,bi:1}];
+  else if (hasTb) slots = [{type:'tb',ti:0,bi:0},{type:'tb',ti:1,bi:1},{type:'tb',ti:2,bi:2}];
+  else if (hasOp) slots = [{type:'op',oi:0},{type:'op',oi:1},{type:'op',oi:2}];
+
+  slots.forEach((slot, i) => {
+    if (i >= 3) return;
+    let top=null,bot=null,op=null,out=needOuter?(so[i]||so[0]||null):null;
+    const reasons = [];
+    if (slot.type === 'tb') {
+      top=st[slot.ti]||st[0]||null; bot=sb[slot.bi]||sb[0]||null;
+      if (!top && !bot) return;
+      if (top && (top.wearCount||0) === 0) reasons.push(top.name+'はまだきてないよ！');
+      else if (top && top.lastWorn && daysBetween(top.lastWorn,today)>7) reasons.push(top.name+'はしばらくきてないね');
+      if (top && top.sleeve === 'short') reasons.push('半そでですずしく');
+      if (top && top.sleeve === 'long') reasons.push('長そであたたかく');
+    } else {
+      op=sp[slot.oi]||null; if (!op) return;
+      if ((op.wearCount||0) === 0) reasons.push(op.name+'はまだきてないよ！');
+      else if (op.lastWorn && daysBetween(op.lastWorn,today)>7) reasons.push(op.name+'はしばらくきてないね');
+      reasons.push('ワンピース1まいでかんたん！');
+    }
+    if (temp >= 25) reasons.push('あついからすずしく'); else if (temp >= 20) reasons.push('すごしやすいきおん');
+    else if (temp >= 10) reasons.push('すこしひんやり'); else reasons.push('さむい！あたたかくしよう');
+    if (weather === 'rainy') reasons.push('あめのひ'); if (whiteNg) reasons.push('しろNG');
+    if (!out && needOuter && !outers.length) reasons.push('アウター未登録');
+    proposals.push({index:i,label:labels[i][0],icon:labels[i][1],type:slot.type,tops:top,bottoms:bot,onepiece:op,outer:out,reason:reasons.join(' ')});
+  });
+  _currentProposals = proposals;
+  renderProposals(proposals, needOuter, !outers.length);
+  switchScreen('propose');
+}
+function renderProposals(proposals, needOuter, noOuters) {
+  const c = document.getElementById('proposals-container');
+  if (!proposals.length) { c.innerHTML = '<div class="no-proposal"><div class="no-icon">🤔</div><p>ていあんできるふくがたりないよ</p><button class="btn btn-primary mt-12" onclick="startNewRegistration()">ふくをとうろく</button></div>'; return; }
+  const pc = ['p1','p2','p3']; let h = '';
+  proposals.forEach((p, i) => {
+    h += '<div class="proposal-card"><div class="proposal-header '+pc[i]+'">'+p.icon+' '+p.label+'</div><div class="proposal-items">';
+    if (p.type === 'op') { h += renderProposalItem('ワンピース',p.onepiece); if (needOuter) h += renderProposalItem('アウター',p.outer); }
+    else { h += renderProposalItem('トップス',p.tops) + renderProposalItem('ボトムス',p.bottoms); if (needOuter) h += renderProposalItem('アウター',p.outer); }
+    h += '</div><div class="proposal-reason">💬 '+escapeHtml(p.reason)+'</div><div class="proposal-actions"><button class="btn btn-sm btn-primary" onclick="adoptProposal('+i+')" style="width:100%;">👍 これにする！</button></div></div>';
+  });
+  if (noOuters && needOuter) h += '<div style="text-align:center;color:var(--text-light);font-size:12px;margin-top:8px;">ℹ アウター未登録</div>';
+  c.innerHTML = h;
+}
+function renderProposalItem(cat, item) {
+  if (!item) return '<div class="proposal-item"><div class="item-cat">'+cat+'</div><div class="item-photo"><span style="font-size:24px;display:flex;align-items:center;justify-content:center;height:100%;">—</span></div><div class="item-name">なし</div></div>';
+  return '<div class="proposal-item"><div class="item-cat">'+cat+'</div><div class="item-photo">'+(item.photo?'<img src="'+item.photo+'">':'<span style="font-size:28px;display:flex;align-items:center;justify-content:center;height:100%;">'+getCategoryEmoji(item.category)+'</span>')+'</div><div class="item-name">'+escapeHtml(item.name)+'</div></div>';
+}
+async function adoptProposal(idx) {
+  if (!_currentProposals[idx]) return; const p = _currentProposals[idx];
+  const ok = await showConfirm('このコーデにきめる？'); if (!ok) return;
+  const today = new Date().toISOString().split('T')[0], clothes = loadClothes(), history = loadHistory();
+  const rec = { date:today, tops:p.type==='tb'&&p.tops?p.tops.id:null, bottoms:p.type==='tb'&&p.bottoms?p.bottoms.id:null, onepiece:p.type==='op'&&p.onepiece?p.onepiece.id:null, outer:p.outer?p.outer.id:null };
+  const prevC = JSON.parse(JSON.stringify(clothes)), prevH = JSON.parse(JSON.stringify(history));
+  const ei = history.findIndex(h => h.date === today); if (ei >= 0) history[ei] = rec; else history.unshift(rec);
+  const worn = p.type==='op'?[p.onepiece,p.outer]:[p.tops,p.bottoms,p.outer];
+  worn.forEach(item => { if (!item) return; const ci = clothes.findIndex(c => c.id === item.id); if (ci >= 0) { clothes[ci].wearCount = (clothes[ci].wearCount||0)+1; clothes[ci].lastWorn = today; } });
+  try {
+    if (_supabase && _familyCode) {
+      await upsertHistoryRecord(rec);
+      for (const t of worn) { if (!t) continue; const l = clothes.find(c=>c.id===t.id); if (l) { const s = await upsertClothesToCloud(l); l.photo = s.photo; } }
+    }
+    saveHistoryData(history); saveClothesData(clothes); showToast('きょうのコーデをきめたよ！🎉'); switchScreen('home');
+  } catch (e) { saveHistoryData(prevH); saveClothesData(prevC); showToast('きろくしっぱい'); }
+}
+
+/* ===== 着用履歴 ===== */
+function renderHistory() {
+  const c=document.getElementById('history-container'),em=document.getElementById('history-empty'),history=loadHistory(),clothes=loadClothes();
+  if(!history.length){c.innerHTML='';em.style.display='block';return;}em.style.display='none';let h='';
+  history.forEach((rec,i)=>{
+    const isToday=rec.date===new Date().toISOString().split('T')[0];
+    h+='<div class="history-date">'+(isToday?'📌':'📅')+' '+formatDate(rec.date)+(isToday?' （きょう）':'')+'</div><div class="history-card"><div class="history-items">';
+    const cats=rec.onepiece?['onepiece','outer']:['tops','bottoms','outer'];
+    cats.forEach(cat=>{const id=rec[cat];if(!id)return;const item=clothes.find(c=>c.id===id);if(!item){h+='<div class="history-item"><div class="h-photo"><div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-light);">？</div></div><div class="h-name">さくじょずみ</div></div>';return;}h+='<div class="history-item"><div class="h-photo">'+(item.photo?'<img src="'+item.photo+'">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">'+getCategoryEmoji(item.category)+'</div>')+'</div><div class="h-name">'+escapeHtml(item.name)+'</div></div>';});
+    h+='</div>';
+    if(i>0){const pr=history[i-1];const cons=[];(rec.onepiece?['onepiece','outer']:['tops','bottoms','outer']).forEach(cat=>{if(rec[cat]&&pr[cat]&&rec[cat]===pr[cat]){const it=clothes.find(c=>c.id===rec[cat]);if(it)cons.push(it.name);}});if(cons.length)h+='<div class="consecutive-warn">⚠ れんぞく: '+cons.map(n=>escapeHtml(n)).join('、')+'</div>';}
+    h+='</div>';
+  }); c.innerHTML=h;
+}
+
+/* ===== サンプルデータ（季節配列+袖対応） ===== */
+async function showSampleDialog(){const ok=await showConfirm('サンプルデータをついかする？');if(!ok)return;insertSampleData();}
+function insertSampleData() {
+  const clothes = loadClothes();
+  const S = [
+    {name:'ピンクのTシャツ',category:'tops',color:'pink',seasons:['summer'],sleeve:'short',washing:false,fav:true,wearCount:3,lastWorn:getDateStr(-3)},
+    {name:'しろいブラウス',category:'tops',color:'white',seasons:['spring','summer'],sleeve:'short',washing:false,fav:false,wearCount:5,lastWorn:getDateStr(-1)},
+    {name:'ボーダーロンT',category:'tops',color:'navy',seasons:['spring','autumn'],sleeve:'long',washing:true,fav:false,wearCount:4,lastWorn:getDateStr(-5)},
+    {name:'きいろいパーカー',category:'tops',color:'yellow',seasons:['autumn','winter'],sleeve:'long',washing:false,fav:true,wearCount:2,lastWorn:getDateStr(-7)},
+    {name:'みどりのポロシャツ',category:'tops',color:'green',seasons:['summer'],sleeve:'short',washing:false,fav:false,wearCount:1,lastWorn:getDateStr(-10)},
+    {name:'キャラTシャツ（ネコ）',category:'tops',color:'blue',seasons:['summer'],sleeve:'short',washing:false,fav:true,wearCount:6,lastWorn:getDateStr(-2)},
+    {name:'あかいフリース',category:'tops',color:'red',seasons:['winter'],sleeve:'long',washing:false,fav:false,wearCount:0,lastWorn:null},
+    {name:'むらさきのセーター',category:'tops',color:'purple',seasons:['winter'],sleeve:'long',washing:false,fav:false,wearCount:1,lastWorn:getDateStr(-14)},
+    {name:'デニムパンツ',category:'bottoms',color:'blue',seasons:['all'],sleeve:'',washing:false,fav:true,wearCount:8,lastWorn:getDateStr(-1)},
+    {name:'ピンクのスカート',category:'bottoms',color:'pink',seasons:['spring','summer'],sleeve:'',washing:false,fav:true,wearCount:3,lastWorn:getDateStr(-4)},
+    {name:'くろいレギンス',category:'bottoms',color:'black',seasons:['all'],sleeve:'',washing:false,fav:false,wearCount:5,lastWorn:getDateStr(-2)},
+    {name:'チェックのスカート',category:'bottoms',color:'red',seasons:['autumn','winter'],sleeve:'',washing:true,fav:false,wearCount:2,lastWorn:getDateStr(-8)},
+    {name:'ベージュのハーフパンツ',category:'bottoms',color:'beige',seasons:['summer'],sleeve:'',washing:false,fav:false,wearCount:1,lastWorn:getDateStr(-12)},
+    {name:'グレーのスウェット',category:'bottoms',color:'gray',seasons:['winter'],sleeve:'',washing:false,fav:false,wearCount:3,lastWorn:getDateStr(-6)},
+    {name:'ピンクのワンピース',category:'onepiece',color:'pink',seasons:['spring'],sleeve:'short',washing:false,fav:true,wearCount:2,lastWorn:getDateStr(-6)},
+    {name:'あおいワンピース',category:'onepiece',color:'blue',seasons:['summer'],sleeve:'short',washing:false,fav:false,wearCount:1,lastWorn:getDateStr(-11)},
+    {name:'しろいワンピース',category:'onepiece',color:'white',seasons:['summer'],sleeve:'short',washing:false,fav:true,wearCount:0,lastWorn:null},
+    {name:'きいろいレインコート',category:'outer',color:'yellow',seasons:['all'],sleeve:'long',washing:false,fav:false,wearCount:2,lastWorn:getDateStr(-10)},
+    {name:'ネイビーのダウン',category:'outer',color:'navy',seasons:['winter'],sleeve:'long',washing:false,fav:true,wearCount:4,lastWorn:getDateStr(-3)},
+    {name:'ピンクのカーディガン',category:'outer',color:'pink',seasons:['spring','autumn'],sleeve:'long',washing:false,fav:true,wearCount:1,lastWorn:getDateStr(-15)},
+    {name:'ちゃいろのジャケット',category:'outer',color:'brown',seasons:['autumn','winter'],sleeve:'long',washing:false,fav:false,wearCount:0,lastWorn:null},
+  ];
+  const ids = [];
+  S.forEach(s => { const id = generateId(); ids.push(id); clothes.push({id,name:s.name,category:s.category,color:s.color,seasons:s.seasons,sleeve:s.sleeve,washing:s.washing,fav:s.fav,photo:'',wearCount:s.wearCount,lastWorn:s.lastWorn,createdAt:new Date().toISOString()}); });
+  saveClothesData(clothes);
+  const history = loadHistory();
+  [{date:getDateStr(-1),tops:ids[1],bottoms:ids[8],onepiece:null,outer:null},{date:getDateStr(-2),tops:null,bottoms:null,onepiece:ids[14],outer:ids[19]},{date:getDateStr(-3),tops:ids[0],bottoms:ids[9],onepiece:null,outer:ids[18]}].forEach(r=>{if(!history.find(h=>h.date===r.date))history.unshift(r);});
+  history.sort((a,b)=>b.date.localeCompare(a.date)); saveHistoryData(history);
+  showToast('✅ サンプルついか！'); refreshHome(); renderClothesList();
+}
+async function clearAllData(){const ok=await showConfirm('すべてさくじょします。\nもとにもどせません。');if(!ok)return;localStorage.removeItem(STORAGE_CLOTHES);localStorage.removeItem(STORAGE_HISTORY);showToast('🗑 さくじょ');refreshHome();renderClothesList();renderHistory();}
+
+/* ===== ユーティリティ ===== */
+function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function formatDate(ds){if(!ds)return'';try{const d=new Date(ds+'T00:00:00');return(d.getMonth()+1)+'/'+d.getDate()+'（'+['日','月','火','水','木','金','土'][d.getDay()]+'）';}catch{return ds;}}
+function getDateStr(o){const d=new Date();d.setDate(d.getDate()+o);return d.toISOString().split('T')[0];}
+function daysBetween(a,b){return Math.floor(Math.abs(new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+function getCurrentSeason(){const m=new Date().getMonth()+1;if(m>=3&&m<=5)return'spring';if(m>=6&&m<=8)return'summer';if(m>=9&&m<=11)return'autumn';return'winter';}
+function getCategoryEmoji(c){return{tops:'👕',bottoms:'👖',onepiece:'👗',outer:'🧥'}[c]||'👗';}
+function generateId(){return'c_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+/* ===== 起動 ===== */
+document.addEventListener('DOMContentLoaded', async function () {
+  initColorOptions();
+  applyEmbeddedSupabaseConfig();
+  refreshHome();
+  updateSyncUI();
+  const connected = await autoConnectSupabase();
+  if (connected) {
+    try { await syncFromCloudCore(); showToast('☁ クラウドと自動同期しました'); }
+    catch (e) { console.error('初回同期失敗:', e); showToast('📱 ローカルデータで開始'); }
+  } else { showToast('📱 ローカルモード'); }
+  fetchWeather(_selectedDayOffset);
+});
+
+</script>
+
+</body>
+</html>
